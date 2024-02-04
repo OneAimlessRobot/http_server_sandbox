@@ -1,6 +1,6 @@
 BINARY= server.exe
 
-LDLIBS=  -lm
+LDLIBS=  -lm -lpthread -pthread -lncurses -lSDL2
 INCLUDE= ./Includes .
 SOURCES= . ./Sources
 RESDIR= ./resources
