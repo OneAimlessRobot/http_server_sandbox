@@ -5,4 +5,8 @@ int readall(int sd,char* buff,int64_t size);
 
 int sendall(int sd,char* buff,int64_t size);
 
+int timedreadall(int sd,char* buff,int64_t size);
+
+int timedsendall(int sd,char* buff,int64_t size);
+
 #endif

@@ -78,7 +78,7 @@ void freeStrArr(char** arr,int size){
 
 int* getRandIntArr(int min,int max,int size){
 
-	int* result= malloc(sizeof(int)*size);
+	int* result=malloc(sizeof(int)*size);
 	for(int i=0;i<size;i++){
 
 		result[i]=genRandInt(min,max);

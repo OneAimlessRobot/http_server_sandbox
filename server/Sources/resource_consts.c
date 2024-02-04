@@ -34,11 +34,17 @@ char* manifestExtArr[]={"webmanifest",
 
 	""};
 
+char* jsExtArr[]={"js",
+
+	""};
+
 
 char *args[]={"<numero de clientes>",
 		""};
 
 
-page mainpage={NULL,INDEX_PATH,NULL,0,0,&fillUpPageHeader};
+page mainpage={NULL,INDEX_PATH,NULL,0,0,&fillUpPageHeader},
+	notfoundpage={NULL,NOTFOUND_PATH,NULL,0,0,&fillUpPageHeader};
 
 
+const char* logfpath="logs.log";

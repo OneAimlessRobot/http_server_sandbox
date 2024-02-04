@@ -16,6 +16,10 @@ const char *manifestHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Type: application/manifest+json\r\n"
                           "Content-Length: %lu\r\n"
                           "\r\n";
+const char *jsHeader = "HTTP/1.1 200 OK\r\n"
+                          "Content-Type: application/javascript\r\n"
+                          "Content-Length: %lu\r\n"
+                          "\r\n";
 
  const char *imageHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Type: image/%s\r\n"
@@ -41,6 +45,11 @@ void fillUpVideoHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
 void fillUpManifestHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,manifestHeader,size);
+
+}
+void fillUpJsHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,jsHeader,size);
 
 }
 void fillUpImageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){

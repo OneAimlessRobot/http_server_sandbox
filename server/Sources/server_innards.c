@@ -1,6 +1,7 @@
 #include "../Includes/preprocessor.h"
 #include "../Includes/auxFuncs.h"
 #include "../Includes/server_innards.h"
+#include <errno.h>
 static socklen_t socklenpointer;
 
 static int server_socket,numOfClients,*client_sockets,max_sd;
@@ -11,7 +12,24 @@ static fd_set readfds;
 
 static char peerbuff[PAGE_DATA_SIZE];
 
+static char peerbuffcopy[PAGE_DATA_SIZE];
+
 static char addressContainer[INET_ADDRSTRLEN];
+
+static char* argv[ARGVMAX];
+      	
+FILE* logstream;
+static void setNonBlocking(int socket) {
+    int flags = fcntl(socket, F_GETFL, 0);
+    if (flags == -1) {
+        fprintf(logstream,"erro a atribuir flags a uma socket de cliente: %s\n",strerror(errno));
+        return;
+    }
+
+    if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1) {
+        fprintf(logstream,"erro a atribuir flags a uma socket de cliente: %s\n",strerror(errno));
+    }
+}
 
 static void sigint_handler(int signal){
 	
@@ -23,16 +41,23 @@ static void sigint_handler(int signal){
 	}
 	
 	free(mainpage.data);
+	free(notfoundpage.data);
 	free(client_sockets);
+	fprintf(logstream,"Adeus! Server out...\n");
+	fclose(logstream);
 	printf("Adeus! Server out...\n");
 	exit(-1);
 
 }
 
-static void open_resource(page* p,char* ext){
+static int open_resource(page* p,char* ext){
 		
 		if(!p->pagestream){
-		p->pagestream=fopen(p->pagepath,"r");
+		if(!(p->pagestream=fopen(p->pagepath,"r"))){
+
+			fprintf(logstream,"Invalid filepath: %s\n%s\n",p->pagepath,strerror(errno));
+			return -1;
+		}
 		fseek(p->pagestream,0,SEEK_END);
 		p->data_size=ftell(p->pagestream);
 		fseek(p->pagestream,0,SEEK_SET);
@@ -41,22 +66,22 @@ static void open_resource(page* p,char* ext){
 		p->headerFillFunc(headerBuff,p->data_size,ext);
 
 		p->header_size=strlen(headerBuff);
-		p->data=malloc(p->header_size+p->data_size);
-		memset(p->data,0,p->header_size+p->data_size);
-		printf("%s %p\n",p->pagepath,p->pagestream);
+		p->data=malloc(p->header_size+p->data_size+1);
+		memset(p->data,0,p->header_size+p->data_size+1);
+		fprintf(logstream,"%s %p\n",p->pagepath,p->pagestream);
 		
-		char buff[1024]={0};
+		char buff[LINESIZE]={0};
 		char * ptr= p->data;
 		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,1024,p->pagestream)){
+		while(fgets(buff,LINESIZE,p->pagestream)){
 			
-			ptr+=snprintf(ptr,1024,"%s",buff);
+			ptr+=snprintf(ptr,LINESIZE,"%s",buff);
 		}
 		fclose(p->pagestream);
 		p->pagestream=NULL;
-	
+		return 0;
 		}
-
+	return -1;
 }
 static void initializeClients(void){
 
@@ -91,17 +116,21 @@ static void handleIncommingConnections(void){
 		
 		if ((client_socket = accept(server_socket,(struct sockaddr*)(&clientAddress),&socklenpointer))<0)
 		{
-                perror("accept");
-                exit(EXIT_FAILURE);
+                fprintf(logstream,"accept error!!!!: %s\n",strerror(errno));
+        	raise(SIGINT);
+		
         	}
-		//add new socket to array of sockets
+		setNonBlocking(client_socket);
+		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+                fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+                		//add new socket to array of sockets
             for (int i = 0; i < numOfClients; i++)
             {
                 //if position is empty
                 if( client_sockets[i] == 0 )
                 {
                     client_sockets[i] = client_socket;
-                    printf("Adding to list of sockets as %d\n" , i);
+                    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
                     break;
                 }
             }
@@ -111,7 +140,7 @@ static void handleIncommingConnections(void){
 static void handleDisconnect(int i,int sd){
 
     		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-                    printf("Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+                    fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
                     //Close the socket and mark as 0 in list for reuse
                     close( sd );
                     client_sockets[i] = 0;
@@ -121,20 +150,20 @@ static void handleDisconnect(int i,int sd){
 
 static void sendMediaData(int sd,char* buff){
 
-	char path[LINESIZE]={0};
-	char* ptr= path;
 	page p;
+	memset(p.pagepath,0,LINESIZE);
+	char* ptr= p.pagepath;
 	ptr+=snprintf(ptr,LINESIZE,"%s%s",RESOURCES_PATH,buff);
 	p.data=NULL;
 	p.pagestream=NULL;
-	p.pagepath=malloc(LINESIZE);
-	memset(p.pagepath,0,LINESIZE);
-	memcpy(p.pagepath,path,strlen(path));
 	char* ext=get_file_extension(p.pagepath);
 	if(findInStringArr(videoExtArr,ext)>=0){
 	p.headerFillFunc=&fillUpVideoHeader;
 	}
-	if(findInStringArr(pageExtArr,ext)>=0){
+	else if(findInStringArr(jsExtArr,ext)>=0){
+	p.headerFillFunc=&fillUpJsHeader;
+	}
+	else if(findInStringArr(pageExtArr,ext)>=0){
 	
 	p.headerFillFunc=&fillUpPageHeader;
 	}
@@ -150,17 +179,20 @@ static void sendMediaData(int sd,char* buff){
 	else if(findInStringArr(iconExtArr,ext)>=0){
 	p.headerFillFunc=&fillUpIconHeader;
 	}
-	open_resource(&p,ext);
+	if(!open_resource(&p,ext)){
 	if(p.data){
-	if(sendall(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
+	if(timedsendall(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
 	
-		perror("ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!\n");
+		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 	}
 	free(p.data);
-	
 	}
-	if(p.pagepath){
-	free(p.pagepath);
+	}
+	else{
+	if(timedsendall(sd,notfoundpage.data,notfoundpage.data_size+notfoundpage.header_size)!=(notfoundpage.data_size+notfoundpage.header_size)){
+	
+		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO QUE N EXISTE NO SERVER!!!!:\n%s\n",strerror(errno));
+	}
 	}
 
 
@@ -168,11 +200,7 @@ static void sendMediaData(int sd,char* buff){
 
 static void handleCurrentActivity(int sd){
 		
-        char* argv[ARGVMAX];
-      memset(argv,0,ARGVMAX*sizeof(char*));
-	char* pagebuffcopy=malloc(PAGE_DATA_SIZE);
-	memset(pagebuffcopy,0,PAGE_DATA_SIZE);
-	memcpy(pagebuffcopy,peerbuff,PAGE_DATA_SIZE);
+        memset(argv,0,ARGVMAX*sizeof(char*));
 	int argc=makeargv(peerbuff,argv);
 	if(!strcmp(argv[0],"GET")){
 	if(argc>1){
@@ -181,43 +209,45 @@ static void handleCurrentActivity(int sd){
 		if(!strcmp(argv[1],"/")){
 		
 		
-			if(sendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
+			if(timedsendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
 	
-				perror("ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n");
+				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n:%s\n",strerror(errno));
 			}
 		}
 		else{
-			printf("%s\n",argv[1]);
+			fprintf(logstream,"%s\n",argv[1]);
 			sendMediaData(sd,argv[1]);
 		}
 	}
 	}
 	else{
 		
-			if(sendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
+			if(timedsendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
 	
-				perror("ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n");
+				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!:\n%s\n",strerror(errno));
 			}
 	}
-	free(pagebuffcopy);
 
 }
 
 static void handleCurrentConnections(int i,int sd){
- 		int optval;
-	socklen_t optlen = sizeof(optval);
-	if (getsockopt(sd, SOL_SOCKET, SO_ERROR, &optval, &optlen) == 0) {
-    		if (optval == 0) {
-        	// Socket is open
-   	 		readall(sd,peerbuff,PAGE_DATA_SIZE);
-                  	handleCurrentActivity(sd);
+ 		
+			if(sd){
+			if(timedreadall(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
+                  	if(errno == ECONNRESET){
+				handleDisconnect(i,sd);
+			}
+			else{
+				handleCurrentActivity(sd);
+			}
+			}
+			else{
+			
+			handleDisconnect(i,sd);
 		
-		} else {
-        		handleDisconnect(i,sd);
-		}
-		} else {
-    		// Error handling for getsockopt
-		}
+			}
+			}
+		
 }
 
 static void handleActivityInSockets(void){
@@ -248,6 +278,13 @@ static void mainLoop(void){
 
 void initializeServer(int max_quota){
 	
+	/*if(!(logstream=fopen(logfpath,"w"))){
+	
+		perror("logs will be made to stdout!!!! could not create log file\n");
+		logstream=stdout;
+	}*/
+	logstream=stdout;
+
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
@@ -257,6 +294,7 @@ void initializeServer(int max_quota){
 	signal(SIGINT,sigint_handler);
 	
 	open_resource(&mainpage,"html");
+	open_resource(&notfoundpage,"html");
 
 	server_socket= socket(AF_INET,SOCK_STREAM,0);
         int ptr=1;
@@ -280,6 +318,7 @@ void initializeServer(int max_quota){
         struct in_addr ipAddr = pV4Addr->sin_addr;
         
 	inet_ntop( AF_INET, &ipAddr, addressContainer, INET_ADDRSTRLEN );
+	fprintf(logstream,"Server spawnado @ %s\n",inet_ntoa(server_address.sin_addr));
 	printf("Server spawnado @ %s\n",inet_ntoa(server_address.sin_addr));
 	socklenpointer=sizeof(clientAddress);
 

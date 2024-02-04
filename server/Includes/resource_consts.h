@@ -5,9 +5,9 @@ typedef void (*header_fill_func_type)(char headerBuff[LINESIZE], u_int64_t size,
 typedef struct page{
 
 	FILE* pagestream;
-	char *  pagepath;
+	char  pagepath[LINESIZE];
 	char* data;
-	u_int64_t header_size,data_size;
+	int header_size,data_size;
 	header_fill_func_type headerFillFunc;
 }page;
 
@@ -18,8 +18,13 @@ extern char* pageExtArr[];
 extern char* iconExtArr[];
 extern char* imageExtArr[];
 extern char* manifestExtArr[];
+extern char* jsExtArr[];
 extern char *args[];
 
-extern page mainpage;
+extern page mainpage,notfoundpage;
+
+extern const char* logfpath;
+
+extern FILE* logstream;
 
 #endif
