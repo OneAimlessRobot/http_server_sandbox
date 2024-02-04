@@ -25,7 +25,44 @@ const char *htmlHeader = "HTTP/1.1 200 OK\r\n"
                           "Content-Length: %lu\r\n"
                           "\r\n";
 
+const char *iconHeader = "HTTP/1.1 200 OK\r\n"
+                          "Content-Type: image/x-icon\r\n"
+                          "Content-Length: %lu\r\n"
+                          "\r\n";
 
+typedef void (*header_fill_func_type)(char headerBuff[LINESIZE], u_int64_t size,char* ext);
+
+void fillUpVideoHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,videoHeader,ext,size);
+
+}
+void fillUpManifestHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,manifestHeader,size);
+
+}
+void fillUpImageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,imageHeader,ext,size);
+
+}
+void fillUpAudioHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,audioHeader,ext,size);
+
+}
+void fillUpPageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,htmlHeader,size);
+	//snprintf(headerBuff,PAGE_DATA_SIZE,"1");
+
+}
+void fillUpIconHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+
+	snprintf(headerBuff,PAGE_DATA_SIZE,iconHeader,size);
+
+}
 char *get_file_extension(const char *path) {
     char *extension = strrchr(path, '.');
 
@@ -58,7 +95,8 @@ typedef struct page{
 	FILE* pagestream;
 	char *  pagepath;
 	char* data;
-	u_int64_t size;
+	u_int64_t header_size,data_size;
+	header_fill_func_type headerFillFunc;
 }page;
 char* pagesArr[]={"/index2.html",
 		 "/index.html",
@@ -71,6 +109,10 @@ char* videoExtArr[]={"mp4",
 		""};
 
 char* pageExtArr[]={"html",
+		""};
+
+char* iconExtArr[]={
+		"ico",
 		""};
 
 
@@ -89,12 +131,7 @@ char *args[]={"<numero de clientes>",
 		""};
 
 
-page mainpage={NULL,INDEX_PATH,NULL};
-
-page pages[]={{NULL,INDEX_PATH,NULL},
-		{NULL,INDEX2_PATH,NULL},
-		{NULL,"",NULL}};
-
+page mainpage={NULL,INDEX_PATH,NULL,0,0,&fillUpPageHeader};
 
 socklen_t socklenpointer;
 int server_socket,numOfClients,*client_sockets,max_sd;
@@ -139,18 +176,49 @@ void print_string_arr(FILE* fstream,char * args[]){
 	}
 
 }
+void open_resource(page* p,char* ext){
+		
+		if(!p->pagestream){
+		p->pagestream=fopen(p->pagepath,"r");
+		fseek(p->pagestream,0,SEEK_END);
+		p->data_size=ftell(p->pagestream);
+		fseek(p->pagestream,0,SEEK_SET);
+
+		char headerBuff[LINESIZE]={0};
+		p->headerFillFunc(headerBuff,p->data_size,ext);
+
+		p->header_size=strlen(headerBuff);
+		p->data=malloc(p->header_size+p->data_size);
+		memset(p->data,0,p->header_size+p->data_size);
+		printf("%s %p\n",p->pagepath,p->pagestream);
+		
+		char buff[1024]={0};
+		char * ptr= p->data;
+		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
+		while(fgets(buff,1024,p->pagestream)){
+			
+			ptr+=snprintf(ptr,1024,"%s",buff);
+		}
+		fclose(p->pagestream);
+		p->pagestream=NULL;
+	
+		}
+
+}
 void open_page(page* p){
 		
 		if(!p->pagestream){
 		p->pagestream=fopen(p->pagepath,"r");
 		fseek(p->pagestream,0,SEEK_END);
-		p->size=ftell(p->pagestream);
+		p->data_size=ftell(p->pagestream);
 		fseek(p->pagestream,0,SEEK_SET);
-		p->data=malloc(p->size+PAGE_DATA_SIZE+1);
-		memset(p->data,0,p->size+PAGE_DATA_SIZE+1);
+
+		p->header_size=1;
+		p->data=malloc(p->header_size+p->data_size);
+		memset(p->data,0,p->header_size+p->data_size);
 		printf("%s %p\n",p->pagepath,p->pagestream);
+		
 		char buff[1024]={0};
-		char headerBuff[1024]={0};
 		char * ptr= p->data;
 		while(fgets(buff,1024,p->pagestream)){
 			
@@ -159,107 +227,6 @@ void open_page(page* p){
 		fclose(p->pagestream);
 		p->pagestream=NULL;
 	
-		}
-
-}
-void open_video(page* p,char* ext){
-		
-		if(!p->pagestream){
-		p->pagestream=fopen(p->pagepath,"r");
-		fseek(p->pagestream,0,SEEK_END);
-		p->size=ftell(p->pagestream);
-		fseek(p->pagestream,0,SEEK_SET);
-		p->data=malloc(PAGE_DATA_SIZE+p->size+1);
-		memset(p->data,0,PAGE_RESPONSE_SIZE+p->size+1);
-		printf("%s %p\n",p->pagepath,p->pagestream);
-		char buff[1024]={0};
-		char headerBuff[1024]={0};
-		char * ptr= p->data;
-		
-		snprintf(headerBuff,PAGE_DATA_SIZE,videoHeader,ext,p->size);
-		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,1024,p->pagestream)){
-			
-			ptr+=snprintf(ptr,1024,"%s",buff);
-		}
-		fclose(p->pagestream);
-		p->pagestream=NULL;
-	
-		}
-
-}
-void open_audio(page* p,char* ext){
-		
-		if(!p->pagestream){
-		p->pagestream=fopen(p->pagepath,"r");
-		fseek(p->pagestream,0,SEEK_END);
-		p->size=ftell(p->pagestream);
-		fseek(p->pagestream,0,SEEK_SET);
-		p->data=malloc(PAGE_DATA_SIZE+p->size+1);
-		memset(p->data,0,PAGE_DATA_SIZE+p->size+1);
-		printf("%s %p\n",p->pagepath,p->pagestream);
-		char buff[1024]={0};
-		char headerBuff[1024]={0};
-		char * ptr= p->data;
-		snprintf(headerBuff,PAGE_DATA_SIZE,audioHeader,ext,p->size);
-		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,1024,p->pagestream)){
-			
-			ptr+=snprintf(ptr,1024,"%s",buff);
-		}
-		fclose(p->pagestream);
-		p->pagestream=NULL;
-	
-		}
-
-}
-void open_manifest(page* p){
-		
-		if(!p->pagestream){
-		p->pagestream=fopen(p->pagepath,"r");
-		fseek(p->pagestream,0,SEEK_END);
-		p->size=ftell(p->pagestream);
-		fseek(p->pagestream,0,SEEK_SET);
-		p->data=malloc(PAGE_DATA_SIZE+p->size+1);
-		memset(p->data,0,PAGE_DATA_SIZE+p->size+1);
-		printf("%s %p\n",p->pagepath,p->pagestream);
-		char buff[1024]={0};
-		char headerBuff[1024]={0};
-		char * ptr= p->data;
-		snprintf(headerBuff,PAGE_DATA_SIZE,manifestHeader,p->size);
-		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,1024,p->pagestream)){
-			
-			ptr+=snprintf(ptr,1024,"%s",buff);
-		}
-		fclose(p->pagestream);
-		p->pagestream=NULL;
-	
-		}
-
-}
-void open_image(page* p,char* ext){
-		
-		if(!p->pagestream){
-		p->pagestream=fopen(p->pagepath,"r");
-		fseek(p->pagestream,0,SEEK_END);
-		p->size=ftell(p->pagestream);
-		fseek(p->pagestream,0,SEEK_SET);
-		p->data=malloc(PAGE_DATA_SIZE+p->size+1);
-		memset(p->data,0,PAGE_DATA_SIZE+p->size+1);
-		printf("%s %p\n",p->pagepath,p->pagestream);
-		char buff[1024]={0};
-		char headerBuff[1024]={0};
-		char * ptr= p->data;
-		snprintf(headerBuff,PAGE_DATA_SIZE,imageHeader,ext,p->size);
-		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,1024,p->pagestream)){
-			
-			ptr+=snprintf(ptr,1024,"%s",buff);
-		}
-		fclose(p->pagestream);
-		p->pagestream=NULL;
-
 		}
 
 }
@@ -314,16 +281,6 @@ void handleIncommingConnections(void){
                 perror("accept");
                 exit(EXIT_FAILURE);
         	}
-		/*
-		int flags= fcntl(client_socket,F_GETFL);
-		flags |= O_NONBLOCK;
-	        fcntl(client_socket,F_SETFL,flags);
-		*/
-		if( send(client_socket, HTTP_OK_HEADER, strlen(HTTP_OK_HEADER), 0) != strlen(HTTP_OK_HEADER) )   
-            	{
-                perror("send");
-            	}
-		
 		//add new socket to array of sockets
             for (int i = 0; i < numOfClients; i++)
             {
@@ -353,8 +310,8 @@ void sendMediaData(int sd,char* buff){
 
 	char path[LINESIZE]={0};
 	char* ptr= path;
-	ptr+=snprintf(ptr,LINESIZE,"%s%s",RESOURCES_PATH,buff);
 	page p;
+	ptr+=snprintf(ptr,LINESIZE,"%s%s",RESOURCES_PATH,buff);
 	p.data=NULL;
 	p.pagestream=NULL;
 	p.pagepath=malloc(LINESIZE);
@@ -366,21 +323,26 @@ void sendMediaData(int sd,char* buff){
 	/*if(findInStringArr(videoExtArr,ext)>=0){
 	open_video(&p,ext);
 	}*/
-	if(findInStringArr(audioExtArr,ext)>=0){
-	open_audio(&p,ext);
+	if(findInStringArr(pageExtArr,ext)>=0){
+	
+	p.headerFillFunc=&fillUpPageHeader;
+	}
+	else if(findInStringArr(audioExtArr,ext)>=0){
+	p.headerFillFunc=&fillUpAudioHeader;
 	}
 	else if(findInStringArr(imageExtArr,ext)>=0){
-	open_image(&p,ext);
+	p.headerFillFunc=&fillUpImageHeader;
 	}
 	else if(findInStringArr(manifestExtArr,ext)>=0){
-	open_manifest(&p);
+	p.headerFillFunc=&fillUpManifestHeader;
 	}
-	else if(findInStringArr(pageExtArr,ext)>=0){
-	open_page(&p);
+	else if(findInStringArr(iconExtArr,ext)>=0){
+	p.headerFillFunc=&fillUpIconHeader;
 	}
+	open_resource(&p,ext);
 	//timedsendall(sd,p.data,strlen(p.data));
 	if(p.data){
-	if(send(sd,p.data,p.size+PAGE_DATA_SIZE,0)!=(p.size+PAGE_DATA_SIZE)){
+	if(send(sd,p.data,p.data_size+p.header_size,0)!=(p.data_size+p.header_size)){
 	
 		perror("ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!\n");
 	}
@@ -409,38 +371,29 @@ void handleCurrentActivity(int sd){
 			
 		if(!strcmp(argv[1],"/")){
 		
-			open_page(&mainpage);
 			//timedsendall(sd,mainpage.data,strlen(mainpage.data));
 		
-			if(send(sd,mainpage.data,mainpage.size+PAGE_DATA_SIZE,0)!=(mainpage.size+PAGE_DATA_SIZE)){
+			if(send(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1,0)!=(mainpage.data_size+mainpage.header_size+1)){
 	
 				perror("ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n");
 			}
 		}
 		else{
+			printf("%s\n",argv[1]);
 			sendMediaData(sd,argv[1]);
 		}
 	}
-	else{
+	}
+	else if(!strcmp(argv[0],"POST")){
 	
-		open_page(&mainpage);
 			//timedsendall(sd,mainpage.data,strlen(mainpage.data));
 		
-			if(send(sd,mainpage.data,mainpage.size+PAGE_DATA_SIZE,0)!=(mainpage.size+PAGE_DATA_SIZE)){
+			if(send(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1,0)!=(mainpage.data_size+mainpage.header_size+1)){
 	
 				perror("ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n");
 			}
-		
 	}
-	}
-	else if(!strcmp(argv[0],"POST")){
-
-	open_page(&pages[1]);
-	send(sd,pages[1].data,strlen(pages[1].data),0);
-	printf("Conexão de %s\n A enviar cenas\n(isto: %s)\n",inet_ntoa(clientAddress.sin_addr),pages[1].data);
-	
-	}
-	free(pagebuffcopy);	
+	free(pagebuffcopy);
 
 }
 
@@ -504,18 +457,19 @@ int timedreadall(int sd,char* buff, int64_t size){
 }
 void handleCurrentConnections(int i,int sd){
 	int numread;
- 		if ((numread = readall(sd,peerbuff,PAGE_DATA_SIZE)) == 0)
-                {
-                    //Somebody disconnected , get his details and prints
-                	handleDisconnect(i,sd);
+ 		int optval;
+	socklen_t optlen = sizeof(optval);
+	if (getsockopt(sd, SOL_SOCKET, SO_ERROR, &optval, &optlen) == 0) {
+    		if (optval == 0) {
+        	// Socket is open
+   	 		readall(sd,peerbuff,PAGE_DATA_SIZE);
+                  	handleCurrentActivity(sd);
+		
+		} else {
+        		handleDisconnect(i,sd);
 		}
-
-                //Echo back the message that came in
-                else
-                {
-                    //set the string terminating NULL byte on the end
-                    //of the data read
-                 	handleCurrentActivity(sd);
+		} else {
+    		// Error handling for getsockopt
 		}
 }
 
@@ -589,7 +543,7 @@ int main(int argc, char ** argv){
 
 		client_sockets[i]=0;
 	}
-	open_page(&mainpage);
+	open_resource(&mainpage,"html");
 	signal(SIGINT,sigint_handler);
 	
 	initializeServer();
@@ -685,4 +639,16 @@ int timedsendall(int sd,char* buff,int64_t size){
 
 
 }
+else{
+	
+		open_page(&mainpage);
+			//timedsendall(sd,mainpage.data,strlen(mainpage.data));
+		
+			if(send(sd,mainpage.data,mainpage.size+PAGE_DATA_SIZE,0)!=(mainpage.size+PAGE_DATA_SIZE)){
+	
+				perror("ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n");
+			}
+		
+	}
+	
 */
