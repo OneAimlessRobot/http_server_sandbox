@@ -110,3 +110,60 @@ int64_t min(int64_t arg1, int64_t arg2){
 
 
 }
+char *get_file_extension(const char *path) {
+    char *extension = strrchr(path, '.');
+
+    if (extension != NULL) {
+        // Move the pointer to the character after the dot
+        return extension + 1;
+    }
+
+    // No file extension found
+    return NULL;
+}
+
+int makeargv(char *s, char *argv[ARGVMAX]) {
+    int ntokens = 0;
+
+    if (s == NULL || argv == NULL || ARGVMAX == 0)
+        return -1;
+    argv[ntokens] = strtok(s, " \t\n");
+    while ((argv[ntokens] != NULL) && (ntokens < ARGVMAX)) {
+        ntokens++;
+        argv[ntokens] = strtok(NULL, " \t\n");
+    }
+    argv[ntokens] = NULL; // it must terminate with NULL
+    return ntokens;
+}
+
+
+int findInStringArr(char* arr[],char* nullTermStr){
+
+	
+	for (int i=0;arr[i][0];i++){
+		if(!strcmp(nullTermStr,arr[i])){
+
+			return i;
+		}
+		
+	}
+	return -1;
+
+}
+
+int get_string_arr_size(char*args[]){
+
+	int i;
+	for (i=0;args[i][0];i++);
+	return i+1;
+
+}
+void print_string_arr(FILE* fstream,char * args[]){
+
+	for (int i=0;args[i][0];i++){
+		
+		fprintf(fstream,"%s ",args[i]);
+
+	}
+
+}

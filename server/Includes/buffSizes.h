@@ -1,0 +1,12 @@
+#ifndef BUFFSIZES_H
+#define BUFFSIZES_H
+
+#define LINESIZE 1024
+#define PAGE_DATA_SIZE 300000
+#define ARGVMAX 100
+#define MAXTIMEOUTSECS 30
+#define MAXTIMEOUTUSECS 0
+#define PORT 8001
+#define MAX_CLIENTS_HARD_LIMIT 1000
+
+#endif

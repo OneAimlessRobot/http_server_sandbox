@@ -11,4 +11,13 @@ double genRanddouble(double min, double max);
 int genRandInt(int min, int max);
 void swap(void** var1, void** var2);
 int64_t min(int64_t arg1, int64_t arg2);
+char *get_file_extension(const char *path);
+int makeargv(char *s, char *argv[ARGVMAX]);
+
+int findInStringArr(char* arr[],char* nullTermStr);
+
+int get_string_arr_size(char*args[]);
+
+void print_string_arr(FILE* fstream,char * args[]);
+
 #endif
