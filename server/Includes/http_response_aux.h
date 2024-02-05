@@ -11,19 +11,19 @@ extern const char *htmlHeader;
 extern const char *iconHeader;
 
 
-void fillUpVideoHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+void fillUpVideoHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 
-void fillUpManifestHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+void fillUpManifestHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 
-void fillUpJsHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+void fillUpJsHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 
-void fillUpImageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
-
-
-void fillUpAudioHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+void fillUpImageHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 
 
-void fillUpPageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+void fillUpAudioHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 
-void fillUpIconHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext);
+
+void fillUpPageHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
+
+void fillUpIconHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext);
 #endif

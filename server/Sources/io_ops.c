@@ -25,7 +25,7 @@ static int readsome(int sd,char buff[],u_int64_t size){
                 return read(sd,buff,size);
 
                 }
-                return -2;
+               return -2;
 }
 
 static int sendsome(int sd,char buff[],u_int64_t size){
@@ -45,15 +45,15 @@ static int sendsome(int sd,char buff[],u_int64_t size){
 }
 
 int timedreadall(int sd,char* buff,int64_t size){
-int counter=1;
-int iResult;
+int counter=0;
+int iResult=0;
 	while(counter<=MAXTRIES){
-		fprintf(logstream,"A tentar read! Tentativa %d de %d\n",counter,MAXTRIES);
+		counter++;
 		int iResult;
-                struct timeval tv;
                 fd_set rfds;
                 FD_ZERO(&rfds);
                 FD_SET(sd,&rfds);
+                struct timeval tv;
                 tv.tv_sec=BIGTIMEOUTSECS;
                 tv.tv_usec=BIGTIMEOUTUSECS;
                 iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
@@ -65,7 +65,8 @@ int iResult;
 
 		break;
 		}
-		counter++;
+		fprintf(logstream,"A tentar read! Tentativa %d de %d falhou!\n",counter,MAXTRIES);
+		
 	}
 		
 		if(!iResult){
@@ -75,17 +76,17 @@ int iResult;
 		}
 		else{
 
-		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n&s\n",strerror(errno));
+		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n%s\n",strerror(errno));
 		
 		}
 		return -2;
 }
 int timedsendall(int sd,char* buff,int64_t size){
 
-int counter=1;
-int iResult;
+int counter=0;
+int iResult=0;
 	while(counter<=MAXTRIES){
-		fprintf(logstream,"A tentar send! Tentativa %d de %d\n",counter,MAXTRIES);
+		counter++;
 		int iResult;
                 struct timeval tv;
                 fd_set rfds;
@@ -102,7 +103,7 @@ int iResult;
 
 		break;
 		}
-		counter++;
+		fprintf(logstream,"A tentar send! Tentativa %d de %d falhou!\n",counter,MAXTRIES);
 	}
 		
 		if(!iResult){
@@ -112,7 +113,7 @@ int iResult;
 		}
 		else{
 
-		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n&s\n",strerror(errno));
+		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n%s\n",strerror(errno));
 		
 		}
 		return -2;
@@ -121,21 +122,29 @@ int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
 	char* ptr= buff;
-	char bufftmp[LINESIZE]={0};
-while((len=read(sd,bufftmp,LINESIZE))>0){
-        printf("Li!!!!\n");
-	ptr+=snprintf(ptr,LINESIZE,"%s",bufftmp);
-	memset(bufftmp,0,LINESIZE);
-        if (len <= 0) {
+	char bufftmp[BUFFSIZE]={0};
+while((len=readsome(sd,bufftmp,BUFFSIZE))>0){
+        //printf("Li!!!!\n");
+	ptr+=snprintf(ptr,BUFFSIZE,"%s",bufftmp);
+	memset(bufftmp,0,BUFFSIZE);
+        if (len < 0) {
+	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+		//fprintf(logstream,"Block no sendall!!!!\n");
+	}
+	else{
 	break;
 	}
+	}
 	total+=len;
+	if(!len){
+	break;
+	}
 	if(total==size){
 	break;
 	}
 }
-
-	if(len<=0){
+	
+	if(len<0){
 	if (errno == EAGAIN || errno == EWOULDBLOCK) {
         	//fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!! A socket e %d\n",total,sd);
 	}
@@ -150,9 +159,13 @@ while((len=read(sd,bufftmp,LINESIZE))>0){
 	}
 	
 	}
-	else{
-		fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!!!!!:\nBuffer cheio!\n%s\n",total,strerror(errno));
-	
+	else if(len){
+		if(total==size){
+			fprintf(logstream,"Li %ld ao todo de %ld!!!! readall bem sucedido!!!!!:\nBuffer cheio!\n",total,size);
+		}
+		else {
+			fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!!!!!:\n",total,size);
+		}
 	}
         
         return total;
@@ -161,12 +174,20 @@ while((len=read(sd,bufftmp,LINESIZE))>0){
 int sendall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
-while((len=write(sd,buff+total,min(LINESIZE,size-total)))>0){ 
-	if(len<=0){
+
+while(1){
+	len=write(sd,buff+total,min(BUFFSIZE,size-total));
+	if(len<0){
+	
+	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+		//fprintf(logstream,"Block no sendall!!!!\n");
+	}
+	else{
 	break;
 	}
+	}
 	total+=len;
-	if(total>=size){
+	if(total>=size||!len){
 	break;
 	}
 }

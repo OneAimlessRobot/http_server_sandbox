@@ -37,38 +37,38 @@ const char *iconHeader = "HTTP/1.1 200 OK\r\n"
                           "\r\n";
 
 
-void fillUpVideoHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpVideoHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,videoHeader,ext,size);
 
 }
-void fillUpManifestHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpManifestHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,manifestHeader,size);
 
 }
-void fillUpJsHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpJsHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,jsHeader,size);
 
 }
-void fillUpImageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpImageHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,imageHeader,ext,size);
 
 }
-void fillUpAudioHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpAudioHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,audioHeader,ext,size);
 
 }
-void fillUpPageHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpPageHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,htmlHeader,size);
 	//snprintf(headerBuff,PAGE_DATA_SIZE,"1");
 
 }
-void fillUpIconHeader(char headerBuff[LINESIZE],u_int64_t size,char* ext){
+void fillUpIconHeader(char headerBuff[PATHSIZE],u_int64_t size,char* ext){
 
 	snprintf(headerBuff,PAGE_DATA_SIZE,iconHeader,size);
 

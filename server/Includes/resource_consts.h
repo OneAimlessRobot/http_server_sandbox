@@ -1,11 +1,11 @@
 #ifndef RESOURCE_CONSTS_H
 #define RESOURCE_CONSTS_H
-typedef void (*header_fill_func_type)(char headerBuff[LINESIZE], u_int64_t size,char* ext);
+typedef void (*header_fill_func_type)(char headerBuff[PATHSIZE], u_int64_t size,char* ext);
 
 typedef struct page{
 
 	FILE* pagestream;
-	char  pagepath[LINESIZE];
+	char  pagepath[PATHSIZE];
 	char* data;
 	int header_size,data_size;
 	header_fill_func_type headerFillFunc;

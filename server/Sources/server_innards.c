@@ -18,8 +18,21 @@ static char peerbuffcopy[PAGE_DATA_SIZE];
 static char addressContainer[INET_ADDRSTRLEN];
 
 static char* argv[ARGVMAX];
-      	
+
 FILE* logstream;
+
+static void setLinger(int socket,int onoff,int time){
+
+struct linger so_linger;
+so_linger.l_onoff = onoff; // Enable linger option
+so_linger.l_linger = time; // Linger time, set to 0
+
+if (setsockopt(socket, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger)) < 0) {
+    perror("setsockopt");
+    // Handle error
+}
+
+}
 static void setNonBlocking(int socket) {
     int flags = fcntl(socket, F_GETFL, 0);
     if (flags == -1) {
@@ -63,7 +76,7 @@ static int open_resource(page* p,char* ext){
 		p->data_size=ftell(p->pagestream);
 		fseek(p->pagestream,0,SEEK_SET);
 
-		char headerBuff[LINESIZE]={0};
+		char headerBuff[PATHSIZE]={0};
 		p->headerFillFunc(headerBuff,p->data_size,ext);
 
 		p->header_size=strlen(headerBuff);
@@ -71,12 +84,12 @@ static int open_resource(page* p,char* ext){
 		memset(p->data,0,p->header_size+p->data_size+1);
 		fprintf(logstream,"%s %p\n",p->pagepath,p->pagestream);
 		
-		char buff[LINESIZE]={0};
+		char buff[BUFFSIZE]={0};
 		char * ptr= p->data;
 		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,LINESIZE,p->pagestream)){
+		while(fgets(buff,BUFFSIZE,p->pagestream)){
 			
-			ptr+=snprintf(ptr,LINESIZE,"%s",buff);
+			ptr+=snprintf(ptr,BUFFSIZE,"%s",buff);
 		}
 		fclose(p->pagestream);
 		p->pagestream=NULL;
@@ -122,6 +135,7 @@ static void handleIncommingConnections(void){
 		
         	}
 		setNonBlocking(client_socket);
+		setLinger(client_socket,0,0);
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                 fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
                 		//add new socket to array of sockets
@@ -152,9 +166,9 @@ static void handleDisconnect(int i,int sd){
 static void sendMediaData(int sd,char* buff){
 
 	page p;
-	memset(p.pagepath,0,LINESIZE);
+	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
-	ptr+=snprintf(ptr,LINESIZE,"%s%s",RESOURCES_PATH,buff);
+	ptr+=snprintf(ptr,PATHSIZE,"%s%s",RESOURCES_PATH,buff);
 	p.data=NULL;
 	p.pagestream=NULL;
 	char* ext=get_file_extension(p.pagepath);
@@ -200,7 +214,7 @@ static void sendMediaData(int sd,char* buff){
 }
 
 static void handleCurrentActivity(int sd){
-		
+	
         memset(argv,0,ARGVMAX*sizeof(char*));
 	int argc=makeargv(peerbuff,argv);
 	if(!strcmp(argv[0],"GET")){
@@ -234,11 +248,14 @@ static void handleCurrentActivity(int sd){
 static void handleCurrentConnections(int i,int sd){
  		
 			//if(sd){
-			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
+			memset(peerbuff,0,PAGE_DATA_SIZE);
+			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
-			else{
+			else if(strlen(peerbuff)){
+				
+				fprintf(logstream,"O request é:\n%s\n",peerbuff);
 				handleCurrentActivity(sd);
 			}
 			}
@@ -251,13 +268,30 @@ static void handleCurrentConnections(int i,int sd){
 		
 }
 
+static int dataIsAvailable(int sockfd) {
+    
+	struct timeval tv;
+        tv.tv_sec=0;
+        tv.tv_usec=0;
+                
+    // Check if data is available
+    int result = select(sockfd + 1, &readfds, NULL, NULL, &tv);
+
+    if (result < 0) {
+        perror("select");
+	raise(SIGINT);
+	}
+
+    return FD_ISSET(sockfd, &readfds);
+}
+
 static void handleActivityInSockets(void){
 	
 	for (int i = 0; i < numOfClients; i++)
         {
             int sd = client_sockets[i];
     	
-	if (FD_ISSET( sd , &readfds))
+	if (FD_ISSET(sd, &readfds))
             {
 		handleCurrentConnections(i,sd);
                 
