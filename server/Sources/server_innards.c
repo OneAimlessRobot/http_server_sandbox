@@ -2,8 +2,9 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
+#define READ_FUNC_TO_USE readall
+#define SEND_FUNC_TO_USE sendall
 static socklen_t socklenpointer;
-
 static int server_socket,numOfClients,*client_sockets,max_sd;
 
 static struct sockaddr_in server_address, clientAddress;
@@ -181,7 +182,7 @@ static void sendMediaData(int sd,char* buff){
 	}
 	if(!open_resource(&p,ext)){
 	if(p.data){
-	if(timedsendall(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
+	if(SEND_FUNC_TO_USE(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
 	
 		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 	}
@@ -189,7 +190,7 @@ static void sendMediaData(int sd,char* buff){
 	}
 	}
 	else{
-	if(timedsendall(sd,notfoundpage.data,notfoundpage.data_size+notfoundpage.header_size)!=(notfoundpage.data_size+notfoundpage.header_size)){
+	if(SEND_FUNC_TO_USE(sd,notfoundpage.data,notfoundpage.data_size+notfoundpage.header_size)!=(notfoundpage.data_size+notfoundpage.header_size)){
 	
 		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO QUE N EXISTE NO SERVER!!!!:\n%s\n",strerror(errno));
 	}
@@ -209,7 +210,7 @@ static void handleCurrentActivity(int sd){
 		if(!strcmp(argv[1],"/")){
 		
 		
-			if(timedsendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
+			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
 	
 				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n:%s\n",strerror(errno));
 			}
@@ -222,7 +223,7 @@ static void handleCurrentActivity(int sd){
 	}
 	else{
 		
-			if(timedsendall(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
+			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
 	
 				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!:\n%s\n",strerror(errno));
 			}
@@ -232,8 +233,8 @@ static void handleCurrentActivity(int sd){
 
 static void handleCurrentConnections(int i,int sd){
  		
-			if(sd){
-			if(timedreadall(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
+			//if(sd){
+			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
@@ -246,7 +247,7 @@ static void handleCurrentConnections(int i,int sd){
 			handleDisconnect(i,sd);
 		
 			}
-			}
+			//}
 		
 }
 

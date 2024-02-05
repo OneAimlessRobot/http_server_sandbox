@@ -41,11 +41,14 @@ static int sendsome(int sd,char buff[],u_int64_t size){
 
                 return write(sd,buff,size);
                 }
-                return -2;
+               return -2;
 }
 
 int timedreadall(int sd,char* buff,int64_t size){
-
+int counter=1;
+int iResult;
+	while(counter<=MAXTRIES){
+		fprintf(logstream,"A tentar read! Tentativa %d de %d\n",counter,MAXTRIES);
 		int iResult;
                 struct timeval tv;
                 fd_set rfds;
@@ -58,12 +61,31 @@ int timedreadall(int sd,char* buff,int64_t size){
 
                 return readall(sd,buff,size);
                 }
+		else if(iResult<0){
+
+		break;
+		}
+		counter++;
+	}
+		
+		if(!iResult){
 
 		fprintf(logstream,"socket deu timeout!!\navisando server para dropar cliente!\n");
+		return -2;
+		}
+		else{
+
+		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n&s\n",strerror(errno));
+		
+		}
 		return -2;
 }
 int timedsendall(int sd,char* buff,int64_t size){
 
+int counter=1;
+int iResult;
+	while(counter<=MAXTRIES){
+		fprintf(logstream,"A tentar send! Tentativa %d de %d\n",counter,MAXTRIES);
 		int iResult;
                 struct timeval tv;
                 fd_set rfds;
@@ -76,8 +98,23 @@ int timedsendall(int sd,char* buff,int64_t size){
 
                 return sendall(sd,buff,size);
                 }
+		else if(iResult<0){
+
+		break;
+		}
+		counter++;
+	}
+		
+		if(!iResult){
 
 		fprintf(logstream,"socket deu timeout!!\navisando server para dropar cliente!\n");
+		return -2;
+		}
+		else{
+
+		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n&s\n",strerror(errno));
+		
+		}
 		return -2;
 }
 int readall(int sd,char* buff,int64_t size){
