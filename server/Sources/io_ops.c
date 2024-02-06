@@ -13,7 +13,7 @@
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
 
-static int readsome(int sd,char buff[],u_int64_t size){
+int readsome(int sd,char buff[],u_int64_t size){
                 int iResult;
                 struct timeval tv;
                 fd_set rfds;
@@ -30,7 +30,7 @@ static int readsome(int sd,char buff[],u_int64_t size){
                return -2;
 }
 
-static int sendsome(int sd,char buff[],u_int64_t size){
+int sendsome(int sd,char buff[],u_int64_t size){
                 int iResult;
                 struct timeval tv;
                 fd_set rfds;

@@ -15,8 +15,6 @@ static fd_set readfds;
 
 static char peerbuff[PAGE_DATA_SIZE];
 
-static char peerbuffcopy[PAGE_DATA_SIZE];
-
 static char addressContainer[INET_ADDRSTRLEN];
 
 static char currDir[PATHSIZE];
@@ -47,7 +45,7 @@ static void setNonBlocking(int socket) {
 }
 
 static void sigint_handler(int signal){
-	
+	signal=0;
 	close(server_socket);
 	for(int i=0;i<numOfClients;i++){
 	if(client_sockets[i]>=0){
@@ -59,12 +57,12 @@ static void sigint_handler(int signal){
 	fprintf(logstream,"Adeus! Server out...\n");
 	fclose(logstream);
 	printf("Adeus! Server out...\n");
-	exit(-1);
+	exit(-1+signal);
 
 }
 static void sigpipe_handler(int signal){
 	perror("SIGPIPE!!!!!\n");
-	raise(SIGINT);
+	raise(SIGINT+signal);
 }
 
 int testOpenResource(int sd,char* resourceTarget,char* mimetype){
@@ -100,7 +98,7 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 			
 			memset(buff,0,BUFFSIZE+1);
 		
-		while(numread=fread(buff,1,BUFFSIZE+1,p.pagestream)){
+		while((numread=fread(buff,1,BUFFSIZE+1,p.pagestream))){
 			
 			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
 	
@@ -236,22 +234,6 @@ static void handleCurrentConnections(int i,int sd){
 		
 }
 
-static int dataIsAvailable(int sockfd) {
-    
-	struct timeval tv;
-        tv.tv_sec=0;
-        tv.tv_usec=0;
-                
-    // Check if data is available
-    int result = select(sockfd + 1, &readfds, NULL, NULL, &tv);
-
-    if (result < 0) {
-        perror("select");
-	raise(SIGINT);
-	}
-
-    return FD_ISSET(sockfd, &readfds);
-}
 
 static void handleActivityInSockets(void){
 	
