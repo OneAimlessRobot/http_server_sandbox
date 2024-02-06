@@ -19,7 +19,7 @@ static char peerbuffcopy[PAGE_DATA_SIZE];
 
 static char addressContainer[INET_ADDRSTRLEN];
 
-static char* currDir[PATHSIZE];
+static char currDir[PATHSIZE];
 FILE* logstream;
 
 static void setLinger(int socket,int onoff,int time){
@@ -55,8 +55,6 @@ static void sigint_handler(int signal){
 	}
 	}
 	
-	free(mainpage.data);
-	free(notfoundpage.data);
 	free(client_sockets);
 	fprintf(logstream,"Adeus! Server out...\n");
 	fclose(logstream);
@@ -69,38 +67,53 @@ static void sigpipe_handler(int signal){
 	raise(SIGINT);
 }
 
-static int open_resource(page* p,char* ext){
-		
-		if(!p->pagestream){
-		if(!(p->pagestream=fopen(p->pagepath,"r"))){
+int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 
-			fprintf(logstream,"Invalid filepath: %s\n%s\n",p->pagepath,strerror(errno));
+	page p;
+	memset(p.pagepath,0,PATHSIZE);
+	char* ptr= p.pagepath;
+	p.headerFillFunc=&fillUpGeneralHeader;
+	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
+	printf("%s\n",p.pagepath);
+	p.pagestream=NULL;
+	if(!p.pagestream){
+		if(!(p.pagestream=fopen(p.pagepath,"r"))){
+
+			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
 			return -1;
 		}
-		fseek(p->pagestream,0,SEEK_END);
-		p->data_size=ftell(p->pagestream);
-		fseek(p->pagestream,0,SEEK_SET);
-
-		char headerBuff[PATHSIZE]={0};
-		p->headerFillFunc(headerBuff,p->data_size,ext);
-
-		p->header_size=strlen(headerBuff);
-		p->data=malloc(p->header_size+p->data_size+1);
-		memset(p->data,0,p->header_size+p->data_size+1);
-		fprintf(logstream,"%s %p\n",p->pagepath,p->pagestream);
+		fseek(p.pagestream,0,SEEK_END);
+		p.data_size=ftell(p.pagestream);
+		fseek(p.pagestream,0,SEEK_SET);
 		
-		char buff[BUFFSIZE]={0};
-		char * ptr= p->data;
-		ptr+=snprintf(p->data,PAGE_DATA_SIZE,"%s",headerBuff);
-		while(fgets(buff,BUFFSIZE,p->pagestream)){
+		char headerBuff[PATHSIZE]={0};
+		p.headerFillFunc(headerBuff,p.data_size,mimetype);
+
+		p.header_size=strlen(headerBuff);
+		char buff[BUFFSIZE+1]={0};
+		int numread=0;
+		
+			if(SEND_FUNC_TO_USE(sd,headerBuff,p.header_size)!=(p.header_size)){
+	
+				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
+			}
 			
-			ptr+=snprintf(ptr,BUFFSIZE,"%s",buff);
+			memset(buff,0,BUFFSIZE+1);
+		
+		while(numread=fread(buff,1,BUFFSIZE+1,p.pagestream)){
+			
+			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
+	
+				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
+			}
+			
+			memset(buff,0,BUFFSIZE+1);
 		}
-		fclose(p->pagestream);
-		p->pagestream=NULL;
+		fclose(p.pagestream);
+		p.pagestream=NULL;
 		return 0;
 		}
-	return -1;
+		return 0;
 }
 static void initializeClients(void){
 
@@ -168,36 +181,9 @@ static void handleDisconnect(int i,int sd){
 
 }
 
-static void sendMediaData(int sd,char* buff,char* mimetype){
+static int sendMediaData(int sd,char* buff,char* mimetype){
 
-	page p;
-	memset(p.pagepath,0,PATHSIZE);
-	char* ptr= p.pagepath;
-	
-	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,buff);
-	printf("%s\n",p.pagepath);
-	p.data=NULL;
-	p.pagestream=NULL;
-	
-	p.headerFillFunc=&fillUpGeneralHeader;
-	
-	if(!open_resource(&p,mimetype)){
-	if(p.data){
-	if(SEND_FUNC_TO_USE(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
-	
-		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-	}
-	free(p.data);
-	}
-	}
-	else{
-	if(SEND_FUNC_TO_USE(sd,notfoundpage.data,notfoundpage.data_size+notfoundpage.header_size)!=(notfoundpage.data_size+notfoundpage.header_size)){
-	
-		fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO QUE N EXISTE NO SERVER!!!!:\n%s\n",strerror(errno));
-	}
-	}
-
-
+	return testOpenResource(sd,buff,mimetype);
 }
 
 static void handleCurrentActivity(int sd,http_header header){
@@ -208,11 +194,8 @@ static void handleCurrentActivity(int sd,http_header header){
 			
 		if(!strcmp(header.target,"/")){
 		
+			sendMediaData(sd,defaultTarget,defaultMimetype);
 		
-			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
-	
-				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!\n:%s\n",strerror(errno));
-			}
 		}
 		else{
 			fprintf(logstream,"%s\n",header.target);
@@ -225,10 +208,7 @@ static void handleCurrentActivity(int sd,http_header header){
 	break;
 	default:
 		
-			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
-	
-				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!:\n%s\n",strerror(errno));
-			}
+		sendMediaData(sd,defaultTarget,defaultMimetype);
 	break;
 	}
 }
@@ -320,9 +300,7 @@ void initializeServer(int max_quota){
 	
 	signal(SIGPIPE,sigpipe_handler);
 	
-	open_resource(&mainpage,"html");
-	open_resource(&notfoundpage,"html");
-
+	
 	server_socket= socket(AF_INET,SOCK_STREAM,0);
         int ptr=1;
         setsockopt(server_socket,SOL_SOCKET,SO_REUSEADDR,(char*)&ptr,sizeof(ptr));

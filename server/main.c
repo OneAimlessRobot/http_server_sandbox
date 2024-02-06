@@ -11,9 +11,6 @@ int main(int argc, char ** argv){
 		fprintf(stderr,"\n");
 		exit(-1);
 	}
-	
-	
 	initializeServer(atoi(argv[1]));
-
 	return 0;
 }

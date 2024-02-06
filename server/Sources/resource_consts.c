@@ -7,16 +7,14 @@
 
 
 
-char *args[]={"<numero de clientes>",
-		NULL};
+char *args[]={"<numero de clientes>",NULL};
+//char *args[]={"<path de resource>,<path de destino (relativa ao wd do exec)>",NULL};
 
-
-page mainpage={NULL,INDEX_PATH,NULL,0,0,&fillUpGeneralHeader},
-	notfoundpage={NULL,NOTFOUND_PATH,NULL,0,0,&fillUpGeneralHeader};
 
 
 char* logfpath="logs.log";
 char* defaultTarget="/index.html";
+char* notFoundTarget="/notfound.html";
 char* defaultVersion="HTTP/1.1";
 char* defaultMimetype="*/*";
 
