@@ -733,7 +733,7 @@ function start() {
 	onLoad();
 	togglePause();
 	let pauseButton = document.getElementById("pauseButton");
-	pauseButton.style.display = "block";
+ 	pauseButton.style.display = "block";
 }
 
 function onLoad() {

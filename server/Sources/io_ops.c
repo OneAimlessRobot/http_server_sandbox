@@ -178,7 +178,9 @@ int sendall(int sd,char* buff,int64_t size){
 		 total=0;
 
 while(1){
-	len=send(sd,buff+total,size,0);
+	//min(BUFFSIZE,size-total)
+	//size
+	len=send(sd,buff+total,min(BUFFSIZE,size-total),0);
 	if(len<0){
 	if(len==-2){
 		fprintf(logstream,"Timeout no sendall!!!!\n");

@@ -1,5 +1,6 @@
 #include "../Includes/preprocessor.h"
 #include "../Includes/auxFuncs.h"
+#include "../Includes/resource_consts.h"
 #include "../Includes/http_req_parser.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
@@ -18,8 +19,7 @@ static char peerbuffcopy[PAGE_DATA_SIZE];
 
 static char addressContainer[INET_ADDRSTRLEN];
 
-static char* argv[ARGVMAX];
-
+static char* currDir[PATHSIZE];
 FILE* logstream;
 
 static void setLinger(int socket,int onoff,int time){
@@ -66,21 +66,7 @@ static void sigint_handler(int signal){
 }
 static void sigpipe_handler(int signal){
 	perror("SIGPIPE!!!!!\n");
-	close(server_socket);
-	for(int i=0;i<numOfClients;i++){
-	if(client_sockets[i]>=0){
-		close(client_sockets[i]);
-	}
-	}
-	
-	free(mainpage.data);
-	free(notfoundpage.data);
-	free(client_sockets);
-	fprintf(logstream,"Adeus! Server out...\n");
-	fclose(logstream);
-	printf("Adeus! Server out...\n");
-	exit(-1);
-
+	raise(SIGINT);
 }
 
 static int open_resource(page* p,char* ext){
@@ -187,7 +173,9 @@ static void sendMediaData(int sd,char* buff,char* mimetype){
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
-	ptr+=snprintf(ptr,PATHSIZE,"%s%s",RESOURCES_PATH,buff);
+	
+	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,buff);
+	printf("%s\n",p.pagepath);
 	p.data=NULL;
 	p.pagestream=NULL;
 	
@@ -212,15 +200,13 @@ static void sendMediaData(int sd,char* buff,char* mimetype){
 
 }
 
-static void handleCurrentActivity(int sd,char* mimetype){
+static void handleCurrentActivity(int sd,http_header header){
 	
-        memset(argv,0,ARGVMAX*sizeof(char*));
-	int argc=makeargv(peerbuff,argv);
-	if(!strcmp(argv[0],"GET")){
-	if(argc>1){
+	switch(header.type){
+	case GET:
 	
 			
-		if(!strcmp(argv[1],"/")){
+		if(!strcmp(header.target,"/")){
 		
 		
 			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
@@ -229,19 +215,22 @@ static void handleCurrentActivity(int sd,char* mimetype){
 			}
 		}
 		else{
-			fprintf(logstream,"%s\n",argv[1]);
-			sendMediaData(sd,argv[1],mimetype);
+			fprintf(logstream,"%s\n",header.target);
+			char* string=header.target;
+			char* argv2[2];
+			memset(argv2,0,2*sizeof(char*));
+			splitString(string,"?",argv2);
+			sendMediaData(sd,argv2[0],header.mimetype);
 		}
-	}
-	}
-	else{
+	break;
+	default:
 		
 			if(SEND_FUNC_TO_USE(sd,mainpage.data,mainpage.data_size+mainpage.header_size+1)!=(mainpage.data_size+mainpage.header_size+1)){
 	
 				fprintf(logstream,"ERRO NO SEND!!!! PEDIRAM A ROOT!!!!:\n%s\n",strerror(errno));
 			}
+	break;
 	}
-
 }
 
 static void handleCurrentConnections(int i,int sd){
@@ -258,7 +247,7 @@ static void handleCurrentConnections(int i,int sd){
 				fprintf(logstream,"O Request foi:%s.E foi dividido assim:\n",peerbuffcopy);
 				http_header header=spawnHTTPRequest(peerbuffcopy).header;
 				print_http_req_header(logstream,header);
-				handleCurrentActivity(sd,header.mimetype);
+				handleCurrentActivity(sd,header);
 			}
 			}
 			else{
@@ -343,6 +332,10 @@ void initializeServer(int max_quota){
         }
 
 	
+	memset(currDir,0,PATHSIZE);
+	
+	getcwd(currDir,PATHSIZE);
+
         server_address.sin_family=AF_INET;
         server_address.sin_port= htons(PORT);
         server_address.sin_addr.s_addr = INADDR_ANY;

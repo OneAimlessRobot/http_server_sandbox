@@ -3,6 +3,7 @@
 #include <string.h>
 #include "../Includes/buffSizes.h"
 #include "../Includes/auxFuncs.h"
+#include "../Includes/resource_consts.h"
 #include "../Includes/http_req_parser.h"
 
 static http_req_type getREQtypeFromString(char* str){
@@ -103,15 +104,17 @@ http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]){
 	if(get_string_arr_size(firstHeaderArr)==1){
 		memset(result.target,0,FIELDSIZE);
 		memset(result.version,0,FIELDSIZE);
+		strcpy(result.target,defaultTarget);
+		strcpy(result.mimetype,defaultMimetype);
 	}
 	else{
 	strcpy(result.target,firstHeaderArr[1]);
 	strcpy(result.version,firstHeaderArr[2]);
-	}
 	strcpy(result.host,find_field_value_in_field_arr("Host",fieldarr));
-	strcpy(result.mimetype,find_field_value_in_field_arr("Accept",fieldarr));
+	//strcpy(result.mimetype,find_field_value_in_field_arr("Accept",fieldarr));
+	strcpy(result.mimetype,defaultMimetype);
 	strcpy(result.os,find_field_value_in_field_arr("sec-ch-ua-platform",fieldarr));
-	
+	}
 	free(test);
 	free(fieldarr);
 	free(firstHeaderBuff);

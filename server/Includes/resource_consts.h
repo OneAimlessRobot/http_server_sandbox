@@ -11,19 +11,9 @@ typedef struct page{
 	header_fill_func_type headerFillFunc;
 }page;
 
-extern char* pagesArr[];
-extern char* audioExtArr[];
-extern char* videoExtArr[];
-extern char* pageExtArr[];
-extern char* iconExtArr[];
-extern char* imageExtArr[];
-extern char* manifestExtArr[];
-extern char* jsExtArr[];
-extern char *args[];
-
 extern page mainpage,notfoundpage;
 
-extern const char* logfpath;
+extern char* logfpath,* defaultTarget,* defaultVersion,* defaultMimetype;
 
 extern FILE* logstream;
 
