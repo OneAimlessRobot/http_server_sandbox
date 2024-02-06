@@ -20,4 +20,13 @@ int get_string_arr_size(char*args[]);
 
 void print_string_arr(FILE* fstream,char * args[]);
 
+void splitString(char *input, char *delimiter, char *pair[2]);
+
+int makeargvdelim(char *s,char* delim, char *argv[ARGVMAX], int maxlen);
+
+int make_str_arr(char *s,char*delim, char *argv[ARGVMAX],int maxlen);
+
+
+
+
 #endif

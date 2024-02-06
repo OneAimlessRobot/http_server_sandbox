@@ -1,4 +1,5 @@
 #include "../Includes/preprocessor.h"
+#include "../Includes/http_req_parser.h"
 #include "../Includes/auxFuncs.h"
 
 double genRanddouble(double min, double max){
@@ -140,7 +141,7 @@ int makeargv(char *s, char *argv[ARGVMAX]) {
 int findInStringArr(char* arr[],char* nullTermStr){
 
 	
-	for (int i=0;arr[i][0];i++){
+	for (int i=0;arr[i];i++){
 		if(!strcmp(nullTermStr,arr[i])){
 
 			return i;
@@ -154,16 +155,91 @@ int findInStringArr(char* arr[],char* nullTermStr){
 int get_string_arr_size(char*args[]){
 
 	int i;
-	for (i=0;args[i][0];i++);
-	return i+1;
+	for (i=0;args[i];i++);
+	return i;
 
 }
 void print_string_arr(FILE* fstream,char * args[]){
 
-	for (int i=0;args[i][0];i++){
+	for (int i=0;args[i];i++){
 		
-		fprintf(fstream,"%s ",args[i]);
+		fprintf(fstream,"%d: <%s>\n",i,args[i]);
 
 	}
 
+}
+
+
+void splitString(char *input, char *delimiter, char *pair[2]) {
+    // Find the first occurrence of the delimiter in the input string
+    char *delimiterPos = strstr(input, delimiter);
+
+    if (delimiterPos != NULL) {
+        // Calculate the length of the first part
+        size_t firstPartLength = delimiterPos - input;
+
+        // Allocate memory for the first part and copy the substring
+        pair[0] = input;
+        
+	pair[0][firstPartLength] = '\0';
+
+        // Allocate memory for the second part and copy the remaining string
+        pair[1] = delimiterPos+strlen(delimiter);
+	
+	
+	} else {
+        // If the delimiter is not found, set the second part to NULL
+        pair[0] = input;
+        pair[1] = NULL;
+    }
+}
+
+int make_str_arr(char *s,char* delim, char *argv[ARGVMAX],int maxlen) {
+    int nheaders = 0;
+    int lentoadvance=0;
+    if (s == NULL || argv == NULL || maxlen<2 || maxlen>ARGVMAX ||ARGVMAX == 0)
+        return -1;
+    char* nextHeader = strstr(s, delim);
+    if(!nextHeader){
+	argv[0]=s;
+	argv[1]=NULL;
+	return 1;
+    }
+    nextHeader[0]=0;
+    argv[nheaders]=s;
+    lentoadvance=strlen(argv[nheaders])+strlen(delim);
+    s+=lentoadvance;
+    nheaders++;
+    while ((nextHeader != NULL) && (nheaders < maxlen)) {
+	nextHeader = strstr(s, delim);
+    	if(nextHeader){
+	nextHeader[0]=0;
+    	argv[nheaders]=s;
+    	lentoadvance=strlen(argv[nheaders])+strlen(delim);
+    	s+=lentoadvance;
+    	nheaders++;
+	}
+	else {
+	argv[nheaders]=s;
+	nheaders++;
+	break;
+    	}
+    }
+    nheaders++;
+    argv[nheaders] = NULL; // it must terminate with NULL
+    return nheaders;
+}
+
+int makeargvdelim(char *s,char* delim, char *argv[ARGVMAX],int maxlen) {
+    int ntokens = 0;
+
+    if (s == NULL || argv == NULL || ARGVMAX == 0|| maxlen<0 || maxlen >ARGVMAX)
+        return -1;
+    argv[ntokens] = strtok(s, delim);
+    while ((argv[ntokens] != NULL) && (ntokens < (maxlen))) {
+        ntokens++;
+        argv[ntokens] = strtok(NULL, delim);
+    }
+    argv[ntokens] = NULL; // it must terminate with NULL
+    return ntokens;
 }

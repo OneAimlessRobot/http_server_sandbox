@@ -24,6 +24,7 @@
 #include "buffSizes.h"
 #include "filePaths.h"
 #include "auxFuncs.h"
+#include "http_req_parser.h"
 #include "resource_consts.h"
 #include "http_response_aux.h"
 #include "filePaths.h"

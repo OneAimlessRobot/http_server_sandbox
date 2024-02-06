@@ -1,5 +1,6 @@
 #include "../Includes/preprocessor.h"
 #include "../Includes/auxFuncs.h"
+#include "../Includes/http_req_parser.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
 #define READ_FUNC_TO_USE readall
@@ -49,7 +50,25 @@ static void sigint_handler(int signal){
 	
 	close(server_socket);
 	for(int i=0;i<numOfClients;i++){
-	if(client_sockets[i]){
+	if(client_sockets[i]>=0){
+		close(client_sockets[i]);
+	}
+	}
+	
+	free(mainpage.data);
+	free(notfoundpage.data);
+	free(client_sockets);
+	fprintf(logstream,"Adeus! Server out...\n");
+	fclose(logstream);
+	printf("Adeus! Server out...\n");
+	exit(-1);
+
+}
+static void sigpipe_handler(int signal){
+	perror("SIGPIPE!!!!!\n");
+	close(server_socket);
+	for(int i=0;i<numOfClients;i++){
+	if(client_sockets[i]>=0){
 		close(client_sockets[i]);
 	}
 	}
@@ -142,7 +161,7 @@ static void handleIncommingConnections(void){
             for (int i = 0; i < numOfClients; i++)
             {
                 //if position is empty
-                if( client_sockets[i] == 0 )
+                if( client_sockets[i] >= 0 )
                 {
                     client_sockets[i] = client_socket;
                     fprintf(logstream,"Adding to list of sockets as %d\n" , i);
@@ -158,12 +177,12 @@ static void handleDisconnect(int i,int sd){
                     fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
                     //Close the socket and mark as 0 in list for reuse
                     close( sd );
-                    client_sockets[i] = 0;
+                    client_sockets[i] = -1;
 
 
 }
 
-static void sendMediaData(int sd,char* buff){
+static void sendMediaData(int sd,char* buff,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
@@ -171,30 +190,10 @@ static void sendMediaData(int sd,char* buff){
 	ptr+=snprintf(ptr,PATHSIZE,"%s%s",RESOURCES_PATH,buff);
 	p.data=NULL;
 	p.pagestream=NULL;
-	char* ext=get_file_extension(p.pagepath);
-	if(findInStringArr(videoExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpVideoHeader;
-	}
-	else if(findInStringArr(jsExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpJsHeader;
-	}
-	else if(findInStringArr(pageExtArr,ext)>=0){
 	
-	p.headerFillFunc=&fillUpPageHeader;
-	}
-	else if(findInStringArr(audioExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpAudioHeader;
-	}
-	else if(findInStringArr(imageExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpImageHeader;
-	}
-	else if(findInStringArr(manifestExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpManifestHeader;
-	}
-	else if(findInStringArr(iconExtArr,ext)>=0){
-	p.headerFillFunc=&fillUpIconHeader;
-	}
-	if(!open_resource(&p,ext)){
+	p.headerFillFunc=&fillUpGeneralHeader;
+	
+	if(!open_resource(&p,mimetype)){
 	if(p.data){
 	if(SEND_FUNC_TO_USE(sd,p.data,p.data_size+p.header_size)!=(p.data_size+p.header_size)){
 	
@@ -213,7 +212,7 @@ static void sendMediaData(int sd,char* buff){
 
 }
 
-static void handleCurrentActivity(int sd){
+static void handleCurrentActivity(int sd,char* mimetype){
 	
         memset(argv,0,ARGVMAX*sizeof(char*));
 	int argc=makeargv(peerbuff,argv);
@@ -231,7 +230,7 @@ static void handleCurrentActivity(int sd){
 		}
 		else{
 			fprintf(logstream,"%s\n",argv[1]);
-			sendMediaData(sd,argv[1]);
+			sendMediaData(sd,argv[1],mimetype);
 		}
 	}
 	}
@@ -246,17 +245,20 @@ static void handleCurrentActivity(int sd){
 }
 
 static void handleCurrentConnections(int i,int sd){
- 		
-			//if(sd){
+ 			
 			memset(peerbuff,0,PAGE_DATA_SIZE);
+			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
 				
-				fprintf(logstream,"O request é:\n%s\n",peerbuff);
-				handleCurrentActivity(sd);
+				memcpy(peerbuffcopy,peerbuff,strlen(peerbuff));
+				fprintf(logstream,"O Request foi:%s.E foi dividido assim:\n",peerbuffcopy);
+				http_header header=spawnHTTPRequest(peerbuffcopy).header;
+				print_http_req_header(logstream,header);
+				handleCurrentActivity(sd,header.mimetype);
 			}
 			}
 			else{
@@ -264,7 +266,6 @@ static void handleCurrentConnections(int i,int sd){
 			handleDisconnect(i,sd);
 		
 			}
-			//}
 		
 }
 
@@ -327,6 +328,8 @@ void initializeServer(int max_quota){
 		client_sockets[i]=0;
 	}
 	signal(SIGINT,sigint_handler);
+	
+	signal(SIGPIPE,sigpipe_handler);
 	
 	open_resource(&mainpage,"html");
 	open_resource(&notfoundpage,"html");

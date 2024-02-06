@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include "../Includes/buffSizes.h"
+#include "../Includes/http_req_parser.h"
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
@@ -164,7 +166,7 @@ while((len=readsome(sd,bufftmp,BUFFSIZE))>0){
 			fprintf(logstream,"Li %ld ao todo de %ld!!!! readall bem sucedido!!!!!:\nBuffer cheio!\n",total,size);
 		}
 		else {
-			fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!!!!!:\n",total,size);
+			fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!!!!!:\n",total);
 		}
 	}
         
@@ -176,29 +178,48 @@ int sendall(int sd,char* buff,int64_t size){
 		 total=0;
 
 while(1){
-	len=write(sd,buff+total,min(BUFFSIZE,size-total));
+	len=send(sd,buff+total,size,0);
 	if(len<0){
-	
+	if(len==-2){
+		fprintf(logstream,"Timeout no sendall!!!!\n");
+		
+		continue;
+	}
 	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-		//fprintf(logstream,"Block no sendall!!!!\n");
+		fprintf(logstream,"Block no sendall!!!!\n");
+		break;
+		//continue;
 	}
 	else{
 	break;
 	}
 	}
 	total+=len;
-	if(total>=size||!len){
+	if(!len){
+	break;
+	}
+	if(total==size){
 	break;
 	}
 }
 	
-	if(len<=0){
+	if(len<0){
+	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        	//fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!! A socket e %d\n",total,sd);
+	}
+	else if(errno==ENOTCONN){
 
-	fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall saiu com erro!!!!!:\n%s\n",total,size,strerror(errno));
+		fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall saiu com erro!!!!!:\nAvisando server para desconectar!\n%s\n",total,size,strerror(errno));
+		return -2;
+
+	}
+	else {
+		fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall saiu com erro!!!!!:\n%s\n",total,size,strerror(errno));
+	}
+	
 	}
 	else{
-
-	fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall bem sucedido!!\n",total,size);
+		fprintf(logstream,"Enviei %ld ao todo de %ld!!!!sendall bem sucedido !!!!!:\n",total,size);
 	}
         return total;
 
