@@ -1,16 +1,16 @@
 BINARY= server.exe
 
-LDLIBS=  -lm -lpthread -pthread -lncurses -lSDL2
+LDLIBS=
 INCLUDE= ./Includes .
 SOURCES= . ./Sources
 RESDIR= ./resources
- 
+
 CURRDIR=echo `pwd`
- 
+
 CC= gcc
 DEPFLAGS= -MP -MD
 
-CFLAGS= -Wall -DPROGRAMPATHAUX="$(CURRDIR)"  -Wextra -g $(foreach D, $(INCLUDE), -I$(D)) $(DEPFLAGS) `sdl2-config --libs`
+CFLAGS= -Werror -Wall -DPROGRAMPATHAUX="$(CURRDIR)"  -Wextra -g $(foreach D, $(INCLUDE), -I$(D)) $(DEPFLAGS) `sdl2-config --libs`
 
 SOURCEFILES=$(foreach D,$(SOURCES), $(wildcard $(D)/*.c))
 
