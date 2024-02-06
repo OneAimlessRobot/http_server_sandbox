@@ -216,16 +216,14 @@ static void handleCurrentActivity(int sd,http_header header){
 static void handleCurrentConnections(int i,int sd){
  			
 			memset(peerbuff,0,PAGE_DATA_SIZE);
-			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
 				
-				memcpy(peerbuffcopy,peerbuff,strlen(peerbuff));
-				fprintf(logstream,"O Request foi:%s.E foi dividido assim:\n",peerbuffcopy);
-				http_header header=spawnHTTPRequest(peerbuffcopy).header;
+				fprintf(logstream,"O Request basicamente foi:\n");
+				http_header header=spawnHTTPRequest(peerbuff).header;
 				print_http_req_header(logstream,header);
 				handleCurrentActivity(sd,header);
 			}
