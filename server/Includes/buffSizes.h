@@ -13,5 +13,6 @@
 #define PORT 8001
 #define MAX_CLIENTS_HARD_LIMIT 1000
 #define MAXTRIES 5
-
+#define BEEP_INTERVAL 100
+#define BEEP_TIMES 1
 #endif

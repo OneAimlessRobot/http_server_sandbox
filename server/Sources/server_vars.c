@@ -1,2 +1,2 @@
 #include "../Includes/server_vars.h"
-int logging;
+int logging,beeping;

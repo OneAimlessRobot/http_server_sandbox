@@ -13,8 +13,8 @@ char *args[]={"<numero de clientes>",NULL};
 
 
 char* logfpath="logs.log";
-char* defaultTarget="/index.html";
-char* notFoundTarget="/notfound.html";
+char* defaultTarget="/pages/index.html";
+char* notFoundTarget="/pages/notfound.html";
 char* defaultVersion="HTTP/1.1";
 char* defaultMimetype="*/*";
 

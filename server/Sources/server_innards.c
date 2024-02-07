@@ -70,7 +70,7 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpGeneralHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
+	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	printf("%s\n",p.pagepath);
 	if(!(p.pagestream=fopen(p.pagepath,"r"))){
 			if(logging){
@@ -131,6 +131,15 @@ int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
 		close(p.pagefd);
 		return 0;
 }
+static void* beepnotify(void* args){
+	
+	char buff[PATHSIZE]={0};
+	snprintf(buff,PATHSIZE,"%s %d %d",CADENCE_BEEPER_PATH,BEEP_TIMES,BEEP_INTERVAL);
+	system(buff);
+	return args;
+
+}
+
 static void initializeClients(void){
 
 FD_ZERO(&readfds);
@@ -243,7 +252,10 @@ static void handleCurrentConnections(int i,int sd){
  			
 			memset(peerbuff,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
-                  	if(errno == ECONNRESET){
+                  	pthread_t beeper;
+			pthread_create(&beeper,NULL,&beepnotify,NULL);
+			pthread_detach(beeper);
+			if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
@@ -253,6 +265,7 @@ static void handleCurrentConnections(int i,int sd){
 				print_http_req_header(logstream,header);
 				}
 				handleCurrentActivity(sd,header);
+				
 			}
 			}
 			else{
@@ -292,13 +305,16 @@ static void mainLoop(void){
 
 void initializeServer(int max_quota){
 	
-	/*if(!(logstream=fopen(logfpath,"w"))){
+	if(!(logstream=fopen(logfpath,"w"))){
 	
 		perror("logs will be made to stdout!!!! could not create log file\n");
 		logstream=stdout;
-	}*/
-	logstream=stdout;
+	}
+	
+	//logstream=stdout;
+	
 	logging=1;
+	beeping=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
