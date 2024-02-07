@@ -54,14 +54,18 @@ static void sigint_handler(int signal){
 	}
 	
 	free(client_sockets);
+	if(logging){
 	fprintf(logstream,"Adeus! Server out...\n");
+	}
 	fclose(logstream);
 	printf("Adeus! Server out...\n");
 	exit(-1+signal);
 
 }
 static void sigpipe_handler(int signal){
-	perror("SIGPIPE!!!!!\n");
+	if(logging){
+	fprintf(logstream,"SIGPIPE!!!!!\n");
+	}
 	raise(SIGINT+signal);
 }
 int testOpenResource(int sd,char* resourceTarget,char* mimetype){
@@ -71,13 +75,18 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpGeneralHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
-	printf("%s\n",p.pagepath);
+	if(logging){
+	fprintf(logstream,"Fetching %s...\n",p.pagepath);
+	}
 	if(!(p.pagestream=fopen(p.pagepath,"r"))){
 			if(logging){
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
 			}
 			return -1;
-		}
+	}
+	if(logging){
+	fprintf(logstream,"Done!\n");
+	}
 		fseek(p.pagestream,0,SEEK_END);
 		p.data_size=ftell(p.pagestream)+1;
 		fseek(p.pagestream,0,SEEK_SET);
@@ -105,13 +114,20 @@ int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpGeneralHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
-	printf("%s\n",p.pagepath);
+	
+	if(logging){
+	fprintf(logstream,"Fetching %s...\n",p.pagepath);
+	}
 	if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
 			if(logging){
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
 			}
 			return -1;
 		}
+	
+	if(logging){
+	fprintf(logstream,"Done!\n");
+	}
 		lseek(p.pagefd,0,SEEK_END);
 		p.data_size=lseek(p.pagefd,0,SEEK_CUR)+1;
 		lseek(p.pagefd,0,SEEK_SET);
@@ -252,9 +268,11 @@ static void handleCurrentConnections(int i,int sd){
  			
 			memset(peerbuff,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
-                  	pthread_t beeper;
+                  	if(beeping){
+			pthread_t beeper;
 			pthread_create(&beeper,NULL,&beepnotify,NULL);
 			pthread_detach(beeper);
+			}
 			if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
