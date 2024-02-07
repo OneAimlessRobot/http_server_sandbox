@@ -64,57 +64,13 @@ static void sigpipe_handler(int signal){
 	perror("SIGPIPE!!!!!\n");
 	raise(SIGINT+signal);
 }
-/*
 int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpGeneralHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
-	printf("%s\n",p.pagepath);
-		if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
-
-			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
-			return -1;
-		}
-		lseek(p.pagefd,0,SEEK_END);
-		p.data_size=lseek(p.pagefd,0,SEEK_CUR)+1;
-		lseek(p.pagefd,0,SEEK_SET);
-		
-		char headerBuff[PATHSIZE]={0};
-		p.headerFillFunc(headerBuff,p.data_size,mimetype);
-
-		p.header_size=strlen(headerBuff);
-		char buff[BUFFSIZE+1]={0};
-		int numread=0;
-		
-			if(SEND_FUNC_TO_USE(sd,headerBuff,p.header_size)!=(p.header_size)){
-	
-				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-			}
-			
-			memset(buff,0,BUFFSIZE+1);
-		
-		while((numread=read(p.pagefd,buff,BUFFSIZE+1))){
-			
-			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
-	
-				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-			}
-			
-			memset(buff,0,BUFFSIZE+1);
-		}
-		close(p.pagefd);
-		return 0;
-}*/
-int testOpenResource(int sd,char* resourceTarget,char* mimetype){
-
-	page p;
-	memset(p.pagepath,0,PATHSIZE);
-	char* ptr= p.pagepath;
-	p.headerFillFunc=&fillUpGeneralHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
+	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
 	printf("%s\n",p.pagepath);
 	if(!(p.pagestream=fopen(p.pagepath,"r"))){
 			if(logging){
@@ -130,27 +86,49 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 		p.headerFillFunc(headerBuff,p.data_size,mimetype);
 
 		p.header_size=strlen(headerBuff);
-		char* buff= malloc(p.data_size);
-		int numread=0;
 		
-			if(SEND_FUNC_TO_USE(sd,headerBuff,p.header_size)!=(p.header_size)){
+			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
 				if(logging){
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
-			
+		sendallchunked(sd,p.pagestream);
 		
-		while((numread=fread(buff,1,p.data_size,p.pagestream))){
-			
-			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
-				if(logging){
-				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-				}
-			}
-			
-		}
-		free(buff);
 		fclose(p.pagestream);
+		return 0;
+}
+
+int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
+
+	page p;
+	memset(p.pagepath,0,PATHSIZE);
+	char* ptr= p.pagepath;
+	p.headerFillFunc=&fillUpGeneralHeader;
+	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
+	printf("%s\n",p.pagepath);
+	if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
+			if(logging){
+			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
+			}
+			return -1;
+		}
+		lseek(p.pagefd,0,SEEK_END);
+		p.data_size=lseek(p.pagefd,0,SEEK_CUR)+1;
+		lseek(p.pagefd,0,SEEK_SET);
+		
+		char headerBuff[PATHSIZE]={0};
+		p.headerFillFunc(headerBuff,p.data_size,mimetype);
+
+		p.header_size=strlen(headerBuff);
+		
+			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
+				if(logging){
+				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
+				}
+			}
+		sendallchunkedfd(sd,p.pagefd);
+		
+		close(p.pagefd);
 		return 0;
 }
 static void initializeClients(void){
@@ -320,7 +298,7 @@ void initializeServer(int max_quota){
 		logstream=stdout;
 	}*/
 	logstream=stdout;
-	logging=0;
+	logging=1;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){

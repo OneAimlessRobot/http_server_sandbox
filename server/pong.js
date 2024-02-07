@@ -35,7 +35,7 @@ var Paddle = {
       y: (this.canvas.height / 2) - 35,
       score: 0,
       move: DIRECTION.IDLE,
-      speed: 10
+      speed: 20
     };
   }
 };
@@ -198,7 +198,7 @@ var Game = {
         this.player.score = this.paddle.score = 0;
         this.player.speed += 0.5;
         this.paddle.speed += 1;
-        this.ball.speed += 1;
+        this.ball.speed += 5;
         this.round += 1;
 
       }
