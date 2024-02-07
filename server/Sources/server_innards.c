@@ -16,6 +16,8 @@ static fd_set readfds;
 
 static char peerbuff[PAGE_DATA_SIZE];
 
+static char peerbuffcopy[PAGE_DATA_SIZE];
+
 static char addressContainer[INET_ADDRSTRLEN];
 
 static char currDir[PATHSIZE];
@@ -267,6 +269,7 @@ static void handleCurrentActivity(int sd,http_header header){
 static void handleCurrentConnections(int i,int sd){
  			
 			memset(peerbuff,0,PAGE_DATA_SIZE);
+			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
                   	if(beeping){
 			pthread_t beeper;
@@ -277,9 +280,10 @@ static void handleCurrentConnections(int i,int sd){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
+				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
 				http_header header=spawnHTTPRequest(peerbuff).header;
 				if(logging){
-				fprintf(logstream,"O Request basicamente foi:\n");
+				fprintf(logstream,"Recebemos request!!!:\n");
 				print_http_req_header(logstream,header);
 				}
 				handleCurrentActivity(sd,header);
@@ -322,14 +326,14 @@ static void mainLoop(void){
 }
 
 void initializeServer(int max_quota){
-	
+	/*
 	if(!(logstream=fopen(logfpath,"w"))){
 	
 		perror("logs will be made to stdout!!!! could not create log file\n");
 		logstream=stdout;
 	}
-	
-	//logstream=stdout;
+	*/
+	logstream=stdout;
 	
 	logging=1;
 	beeping=0;

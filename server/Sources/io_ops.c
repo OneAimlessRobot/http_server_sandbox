@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
@@ -192,6 +193,10 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
                 }
 		//break;
                 continue;
+		/*
+		send(sd, "\r\n0\r\n\r\n", 5, 0);
+		return 0;
+		*/
         }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
@@ -199,14 +204,14 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
                 }
 		break;
 		//continue;
-                
+	
         }
 
         else{
 		if(logging){
                 fprintf(logstream,"Outro erro qualquer!!!!: %s\n",strerror(errno));
                 }
-		break;
+		raise(SIGINT);
 		//continue
         }
         }
@@ -240,8 +245,8 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 		if(logging){
                 fprintf(logstream,"Timeout no sending!!!!\n");
                 }
-		break;
-                //continue;
+		//break;
+                continue;
         }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){

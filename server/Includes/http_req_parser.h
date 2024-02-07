@@ -16,7 +16,8 @@ typedef struct http_header{
 		host[FIELDSIZE],
 		mimetype[FIELDSIZE],
 		os[FIELDSIZE];
-		
+	char* contents;
+	u_int64_t contentsData;	
 
 }http_header;
 

@@ -1,7 +1,39 @@
 Server spawnado @ 0.0.0.0
-Client connected , ip 127.0.0.1 , port 56188 
+Client connected , ip 127.0.0.1 , port 50578 
 Adding to list of sockets as 0
-Li 698 ao todo!!!! readall saiu depois de timeout!!!!!:
+Li 902 ao todo!!!! readall saiu depois de timeout!!!!!:
+O Request basicamente foi:
+HTTP REQUEST:
+
+Type: POST
+Target: /pages/testscript.html
+Version: HTTP/1.1
+Host:  localhost:8001
+mimetype: */*
+OS:  "Linux"
+Fetching /home/oar_X_I/http_server_sandbox/server/resources/pages/index.html...
+Done!
+Client connected , ip 127.0.0.1 , port 50582 
+Adding to list of sockets as 0
+Client connected , ip 127.0.0.1 , port 50650 
+Adding to list of sockets as 0
+Li 549 ao todo!!!! readall saiu depois de timeout!!!!!:
+O Request basicamente foi:
+HTTP REQUEST:
+
+Type: GET
+Target: /pages/pages/site.webmanifest
+Version: HTTP/1.1
+Host:  localhost:8001
+mimetype: */*
+OS:  "Linux"
+/pages/pages/site.webmanifest
+Fetching /home/oar_X_I/http_server_sandbox/server/resources/pages/pages/site.webmanifest...
+Invalid filepath: /home/oar_X_I/http_server_sandbox/server/resources/pages/pages/site.webmanifest
+No such file or directory
+Client connected , ip 127.0.0.1 , port 50678 
+Adding to list of sockets as 0
+Li 646 ao todo!!!! readall saiu depois de timeout!!!!!:
 O Request basicamente foi:
 HTTP REQUEST:
 
@@ -13,129 +45,6 @@ mimetype: */*
 OS:  "Linux"
 Fetching /home/oar_X_I/http_server_sandbox/server/resources/pages/index.html...
 Done!
-Li 629 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /images/komak.png
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/images/komak.png
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/images/komak.png...
-Done!
-Client connected , ip 127.0.0.1 , port 56202 
+Client connected , ip 127.0.0.1 , port 50682 
 Adding to list of sockets as 0
-Li 522 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /pages/site.webmanifest
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/pages/site.webmanifest
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/pages/site.webmanifest...
-Done!
-Client connected , ip 127.0.0.1 , port 56206 
-Adding to list of sockets as 0
-Li 702 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /pages/plaza.html
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/pages/plaza.html
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/pages/plaza.html...
-Done!
-Li 594 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /images/chikoi.jpg
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/images/chikoi.jpg
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/images/chikoi.jpg...
-Done!
-Li 724 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /Narcissa/Narcissa.html
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/Narcissa/Narcissa.html
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/Narcissa/Narcissa.html...
-Done!
-Li 544 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /Narcissa/Narcissa1.js
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/Narcissa/Narcissa1.js
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/Narcissa/Narcissa1.js...
-Done!
-Client connected , ip 127.0.0.1 , port 56214 
-Adding to list of sockets as 0
-Li 543 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /Narcissa/Narcissa.js
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/Narcissa/Narcissa.js
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/Narcissa/Narcissa.js...
-Done!
-Li 562 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /audios/LamentRain.mp3
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/audios/LamentRain.mp3
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/audios/LamentRain.mp3...
-Done!
-Client connected , ip 127.0.0.1 , port 56218 
-Adding to list of sockets as 0
-Li 601 ao todo!!!! readall saiu depois de timeout!!!!!:
-O Request basicamente foi:
-HTTP REQUEST:
-
-Type: GET
-Target: /images/favicon-32x32.png
-Version: HTTP/1.1
-Host:  localhost:8001
-mimetype: */*
-OS:  "Linux"
-/images/favicon-32x32.png
-Fetching /home/oar_X_I/http_server_sandbox/server/resources/images/favicon-32x32.png...
-Done!
 Adeus! Server out...
