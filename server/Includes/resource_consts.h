@@ -4,6 +4,7 @@ typedef void (*header_fill_func_type)(char headerBuff[PATHSIZE], u_int64_t size,
 
 typedef struct page{
 
+	//int pagefd;
 	FILE* pagestream;
 	char  pagepath[PATHSIZE];
 	int header_size,data_size;

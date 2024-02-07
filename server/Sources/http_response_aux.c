@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include "../Includes/buffSizes.h"
 #include "../Includes/http_response_aux.h"
-const char* generalHeader= "HTTP/1.1 200 OK\r\n"
+const char* generalHeader= "HTTP/2 200 OK\r\n"
                           "Content-Type: %s\r\n"
                           "Content-Length: %lu\r\n"
                           "\r\n";

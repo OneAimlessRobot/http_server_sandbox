@@ -2,6 +2,7 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/http_req_parser.h"
+#include "../Includes/server_vars.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
 #define READ_FUNC_TO_USE readall
@@ -19,7 +20,6 @@ static char addressContainer[INET_ADDRSTRLEN];
 
 static char currDir[PATHSIZE];
 FILE* logstream;
-
 static void setLinger(int socket,int onoff,int time){
 
 struct linger so_linger;
@@ -64,7 +64,7 @@ static void sigpipe_handler(int signal){
 	perror("SIGPIPE!!!!!\n");
 	raise(SIGINT+signal);
 }
-
+/*
 int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 
 	page p;
@@ -73,16 +73,14 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 	p.headerFillFunc=&fillUpGeneralHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	printf("%s\n",p.pagepath);
-	p.pagestream=NULL;
-	if(!p.pagestream){
-		if(!(p.pagestream=fopen(p.pagepath,"r"))){
+		if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
 
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
 			return -1;
 		}
-		fseek(p.pagestream,0,SEEK_END);
-		p.data_size=ftell(p.pagestream);
-		fseek(p.pagestream,0,SEEK_SET);
+		lseek(p.pagefd,0,SEEK_END);
+		p.data_size=lseek(p.pagefd,0,SEEK_CUR)+1;
+		lseek(p.pagefd,0,SEEK_SET);
 		
 		char headerBuff[PATHSIZE]={0};
 		p.headerFillFunc(headerBuff,p.data_size,mimetype);
@@ -98,7 +96,7 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 			
 			memset(buff,0,BUFFSIZE+1);
 		
-		while((numread=fread(buff,1,BUFFSIZE+1,p.pagestream))){
+		while((numread=read(p.pagefd,buff,BUFFSIZE+1))){
 			
 			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
 	
@@ -107,10 +105,52 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 			
 			memset(buff,0,BUFFSIZE+1);
 		}
-		fclose(p.pagestream);
-		p.pagestream=NULL;
+		close(p.pagefd);
 		return 0;
+}*/
+int testOpenResource(int sd,char* resourceTarget,char* mimetype){
+
+	page p;
+	memset(p.pagepath,0,PATHSIZE);
+	char* ptr= p.pagepath;
+	p.headerFillFunc=&fillUpGeneralHeader;
+	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
+	printf("%s\n",p.pagepath);
+	if(!(p.pagestream=fopen(p.pagepath,"r"))){
+			if(logging){
+			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
+			}
+			return -1;
 		}
+		fseek(p.pagestream,0,SEEK_END);
+		p.data_size=ftell(p.pagestream)+1;
+		fseek(p.pagestream,0,SEEK_SET);
+		
+		char headerBuff[PATHSIZE]={0};
+		p.headerFillFunc(headerBuff,p.data_size,mimetype);
+
+		p.header_size=strlen(headerBuff);
+		char* buff= malloc(p.data_size);
+		int numread=0;
+		
+			if(SEND_FUNC_TO_USE(sd,headerBuff,p.header_size)!=(p.header_size)){
+				if(logging){
+				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
+				}
+			}
+			
+		
+		while((numread=fread(buff,1,p.data_size,p.pagestream))){
+			
+			if(SEND_FUNC_TO_USE(sd,buff,numread)!=(numread)){
+				if(logging){
+				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
+				}
+			}
+			
+		}
+		free(buff);
+		fclose(p.pagestream);
 		return 0;
 }
 static void initializeClients(void){
@@ -146,23 +186,29 @@ static void handleIncommingConnections(void){
 		
 		if ((client_socket = accept(server_socket,(struct sockaddr*)(&clientAddress),&socklenpointer))<0)
 		{
+		if(logging){
                 fprintf(logstream,"accept error!!!!: %s\n",strerror(errno));
-        	raise(SIGINT);
+        	}
+		raise(SIGINT);
 		
         	}
 		setNonBlocking(client_socket);
 		setLinger(client_socket,0,0);
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-                fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
-                		//add new socket to array of sockets
+                if(logging){
+		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+        	}
+			//add new socket to array of sockets
             for (int i = 0; i < numOfClients; i++)
             {
                 //if position is empty
                 if( client_sockets[i] >= 0 )
                 {
                     client_sockets[i] = client_socket;
-                    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
-                    break;
+                    if(logging){
+		    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
+                    }
+		    break;
                 }
             }
 }
@@ -171,8 +217,10 @@ static void handleIncommingConnections(void){
 static void handleDisconnect(int i,int sd){
 
     		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-                    fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
-                    //Close the socket and mark as 0 in list for reuse
+                    if(logging){
+			fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+                    }
+			//Close the socket and mark as 0 in list for reuse
                     close( sd );
                     client_sockets[i] = -1;
 
@@ -196,7 +244,9 @@ static void handleCurrentActivity(int sd,http_header header){
 		
 		}
 		else{
+			if(logging){
 			fprintf(logstream,"%s\n",header.target);
+			}
 			char* string=header.target;
 			char* argv2[2];
 			memset(argv2,0,2*sizeof(char*));
@@ -219,10 +269,11 @@ static void handleCurrentConnections(int i,int sd){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
-				
-				fprintf(logstream,"O Request basicamente foi:\n");
 				http_header header=spawnHTTPRequest(peerbuff).header;
+				if(logging){
+				fprintf(logstream,"O Request basicamente foi:\n");
 				print_http_req_header(logstream,header);
+				}
 				handleCurrentActivity(sd,header);
 			}
 			}
@@ -269,7 +320,7 @@ void initializeServer(int max_quota){
 		logstream=stdout;
 	}*/
 	logstream=stdout;
-
+	logging=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
@@ -307,8 +358,9 @@ void initializeServer(int max_quota){
         struct in_addr ipAddr = pV4Addr->sin_addr;
         
 	inet_ntop( AF_INET, &ipAddr, addressContainer, INET_ADDRSTRLEN );
+	if(logging){
 	fprintf(logstream,"Server spawnado @ %s\n",inet_ntoa(server_address.sin_addr));
-	printf("Server spawnado @ %s\n",inet_ntoa(server_address.sin_addr));
+	}
 	socklenpointer=sizeof(clientAddress);
 
 	mainLoop();
