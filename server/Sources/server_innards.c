@@ -335,7 +335,7 @@ void initializeServer(int max_quota){
 	*/
 	logstream=stdout;
 	
-	logging=0;
+	logging=1;
 	beeping=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
