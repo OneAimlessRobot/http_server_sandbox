@@ -187,17 +187,6 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
     while (totalsent < truesize + numread + 2) {
         int sent = write(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
         if(sent<0){
-        if(sent==-2){
-		if(logging){
-                fprintf(logstream,"Timeout no sending!!!!\n");
-                }
-		//break;
-                continue;
-		/*
-		send(sd, "\r\n0\r\n\r\n", 5, 0);
-		return 0;
-		*/
-        }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
 		fprintf(logstream,"Block no sending!!!!: %s\n",strerror(errno));
@@ -211,7 +200,8 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
 		if(logging){
                 fprintf(logstream,"Outro erro qualquer!!!!: %s\n",strerror(errno));
                 }
-		raise(SIGINT);
+		//raise(SIGINT);
+		break;
 		//continue
         }
         }
