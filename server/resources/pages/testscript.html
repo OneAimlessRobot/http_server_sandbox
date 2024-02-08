@@ -53,13 +53,16 @@
 	<input name="button" id="submitButton" type="button" value="SUBMIT" onClick="sub(this.form)">
 </form>
 <br>
+	<form id="submitbutton" method="POST" action="/writevent">
 	<br>Escreve aqui o titulo:<br>
-        <textarea id="venttitle" rows="4" cols="50">
+        <textarea id="venttitle" name="venttitle" rows="4" cols="50" maxlength="250">
 	</textarea> 
 	<br>Escreve aqui o conteudo:<br>
-	<textarea id="ventcontent" rows="4" cols="100">
-	</textarea> 
-	<button id="submitbutton" type="button" value="submeter">Submeter!!!!!!!!</button>
+	<textarea id="ventcontent" name="ventcontent" rows="4" cols="100" maxlength="4750">
+	</textarea>
+	<br>
+ 	<input type="submit" name="button" value="submeter!!!!">
+	</form>
 <br>
 
 <form name="myForm" action="" method="GET">

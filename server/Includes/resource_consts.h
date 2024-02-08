@@ -13,7 +13,7 @@ typedef struct page{
 
 extern page mainpage,notfoundpage;
 
-extern char* logfpath,* defaultTarget,* defaultVersion,* defaultMimetype,*notFoundTarget;
+extern char* logfpath,* defaultTarget,* defaultVersion,* defaultMimetype,*notFoundTarget,*testScriptTarget;
 
 extern FILE* logstream;
 

@@ -49,7 +49,7 @@ void print_field_arr(FILE* fstream,http_header_field* fields){
 }
 void print_http_req_header(FILE* fstream,http_header header){
 
-		fprintf(fstream,"HTTP REQUEST:\n\nType: %s\nTarget: %s\nVersion: %s\nHost: %s\nmimetype: %s\nOS: %s\n",getREQStringFromType(header.type),header.target,header.version,header.host,header.mimetype,header.os);
+		fprintf(fstream,"HTTP REQUEST HEADER:\n\nType: %s\nTarget: %s\nVersion: %s\nHost: %s\nmimetype: %s\nOS: %s\n",getREQStringFromType(header.type),header.target,header.version,header.host,header.mimetype,header.os);
 
 }
 static char* find_field_value_in_field_arr(char* fieldName,http_header_field* fields){
@@ -125,11 +125,28 @@ http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]){
 http_request spawnHTTPRequest(char buff[PAGE_DATA_SIZE]){
 	http_request result;
 	char* splitRequest[2];
-	splitString(buff,"\r\n\n",splitRequest);
+	splitString(buff,"\r\n\r\n",splitRequest);
 	result.header=spawnHTTPHeader(splitRequest[0]);
-	result.data_size=0;
-	result.data=NULL;
+	if(!splitRequest[1]){
+	result.data_size=1;
+	}
+	else{
+	result.data_size=strlen(splitRequest[1])+1;
+	
+	}
+	result.data=malloc(result.data_size);
+	memset(result.data,0,result.data_size);
+	if(splitRequest[1]){
+	memcpy(result.data,splitRequest[1],result.data_size-1);
+	}
 	return result;
 
 }
 
+
+void print_http_req(FILE* fstream,http_request req){
+	fprintf(fstream,"HTTP_REQUEST:\n");
+	print_http_req_header(fstream,req.header);
+	fprintf(fstream,"HTTP_REQUEST_CONTENTS=%s\n",req.data);
+
+}

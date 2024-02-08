@@ -12,7 +12,10 @@ int genRandInt(int min, int max);
 void swap(void** var1, void** var2);
 int64_t min(int64_t arg1, int64_t arg2);
 char *get_file_extension(const char *path);
+
 int makeargv(char *s, char *argv[ARGVMAX]);
+
+void replaceStringCharacter(char *s,char dirty,char wantthisoneinstead);
 
 int findInStringArr(char* arr[],char* nullTermStr);
 

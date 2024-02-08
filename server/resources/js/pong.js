@@ -20,7 +20,7 @@ var Ball = {
       y: (this.canvas.height / 2) - 9,
       moveX: DIRECTION.IDLE,
       moveY: DIRECTION.IDLE,
-      speed: incrementedSpeed || 9
+      speed: incrementedSpeed || 25
     };
   }
 };
@@ -35,7 +35,7 @@ var Paddle = {
       y: (this.canvas.height / 2) - 35,
       score: 0,
       move: DIRECTION.IDLE,
-      speed: 20
+      speed: 32
     };
   }
 };
@@ -55,7 +55,7 @@ var Game = {
     this.paddle = Paddle.new.call(this, 'right');
     this.ball = Ball.new.call(this);
 
-    this.paddle.speed = 8;
+    this.paddle.speed = 32;
     this.running = this.over = false;
     this.turn = this.paddle;
     this.timer = this.round = 0;
@@ -196,9 +196,9 @@ var Game = {
         // If there is another round, reset all the values and increment the round number.
         this.color = this._generateRoundColor();
         this.player.score = this.paddle.score = 0;
-        this.player.speed += 0.5;
-        this.paddle.speed += 1;
-        this.ball.speed += 5;
+        this.player.speed += 1;
+        this.paddle.speed += 2;
+        this.ball.speed += 2;
         this.round += 1;
 
       }

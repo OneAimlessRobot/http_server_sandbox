@@ -16,8 +16,6 @@ typedef struct http_header{
 		host[FIELDSIZE],
 		mimetype[FIELDSIZE],
 		os[FIELDSIZE];
-	char* contents;
-	u_int64_t contentsData;	
 
 }http_header;
 
@@ -40,5 +38,7 @@ http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]);
 http_request spawnHTTPRequest(char buff[PAGE_DATA_SIZE]);
 
 void print_http_req_header(FILE* fstream,http_header header);
+
+void print_http_req(FILE* fstream,http_request req);
 
 #endif

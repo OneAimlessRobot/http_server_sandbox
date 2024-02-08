@@ -243,3 +243,18 @@ int makeargvdelim(char *s,char* delim, char *argv[ARGVMAX],int maxlen) {
     argv[ntokens] = NULL; // it must terminate with NULL
     return ntokens;
 }
+
+void replaceStringCharacter(char *s,char dirty,char wantthisoneinstead){
+
+	int size=strlen(s);
+	for(int i=0;i<size;i++){
+		if(s[i]==dirty){
+			
+			s[i]=wantthisoneinstead;
+
+		}
+	}
+
+
+
+}

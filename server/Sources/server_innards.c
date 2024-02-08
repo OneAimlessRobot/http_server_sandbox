@@ -2,6 +2,7 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/http_req_parser.h"
+#include "../Includes/handlecustom.h"
 #include "../Includes/server_vars.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
@@ -14,9 +15,9 @@ static struct sockaddr_in server_address, clientAddress;
 
 static fd_set readfds;
 
-static char peerbuff[PAGE_DATA_SIZE];
+static char* peerbuff=NULL;
 
-static char peerbuffcopy[PAGE_DATA_SIZE];
+static char* peerbuffcopy=NULL;
 
 static char addressContainer[INET_ADDRSTRLEN];
 
@@ -220,7 +221,11 @@ static void handleIncommingConnections(void){
 
 }
 static void handleDisconnect(int i,int sd){
-
+		if(beeping){
+			pthread_t beeper;
+			pthread_create(&beeper,NULL,&beepnotify,NULL);
+			pthread_detach(beeper);
+		}
     		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                     if(logging){
 			fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
@@ -237,8 +242,8 @@ static int sendMediaData(int sd,char* buff,char* mimetype){
 	return testOpenResource(sd,buff,mimetype);
 }
 
-static void handleCurrentActivity(int sd,http_header header){
-	
+static void handleCurrentActivity(int sd,http_request req){
+	http_header header=req.header;
 	switch(header.type){
 	case GET:
 	
@@ -253,10 +258,47 @@ static void handleCurrentActivity(int sd,http_header header){
 			fprintf(logstream,"%s\n",header.target);
 			}
 			char* string=header.target;
+			if(isCustomGetReq(string)){
+				
+				char targetinout[PATHSIZE]={0};
+				handleCustomGetReq(string,targetinout);
+				
+				sendMediaData(sd,targetinout,defaultMimetype);
+			
+			}
+			else{
 			char* argv2[2];
 			memset(argv2,0,2*sizeof(char*));
 			splitString(string,"?",argv2);
 			sendMediaData(sd,argv2[0],header.mimetype);
+			}
+		}
+	break;
+	case POST:
+		
+		if(!strcmp(header.target,"/")){
+		
+			sendMediaData(sd,defaultTarget,defaultMimetype);
+		
+		}
+		else{
+			if(logging){
+			fprintf(logstream,"%s\n",header.target);
+			}
+			char* string=header.target;
+			if(isCustomPostReq(string)){
+
+				char targetinout[PATHSIZE]={0};
+				
+				handleCustomPostReq(string,req.data,targetinout);
+				
+				sendMediaData(sd,targetinout,defaultMimetype);
+				
+			}
+			else{
+
+				sendMediaData(sd,defaultTarget,defaultMimetype);
+			}
 		}
 	break;
 	default:
@@ -267,27 +309,23 @@ static void handleCurrentActivity(int sd,http_header header){
 }
 
 static void handleCurrentConnections(int i,int sd){
- 			
+ 			peerbuff=malloc(PAGE_DATA_SIZE);
+ 			peerbuffcopy=malloc(PAGE_DATA_SIZE);
 			memset(peerbuff,0,PAGE_DATA_SIZE);
 			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
-                  	if(beeping){
-			pthread_t beeper;
-			pthread_create(&beeper,NULL,&beepnotify,NULL);
-			pthread_detach(beeper);
-			}
-			if(errno == ECONNRESET){
+                  	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
 			else if(strlen(peerbuff)){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
-				http_header header=spawnHTTPRequest(peerbuff).header;
+				http_request req=spawnHTTPRequest(peerbuff);
 				if(logging){
 				fprintf(logstream,"Recebemos request!!!:\n");
-				print_http_req_header(logstream,header);
+				print_http_req(logstream,req);
 				}
-				handleCurrentActivity(sd,header);
-				
+				handleCurrentActivity(sd,req);
+				free(req.data);
 			}
 			}
 			else{
@@ -295,6 +333,8 @@ static void handleCurrentConnections(int i,int sd){
 			handleDisconnect(i,sd);
 		
 			}
+			free(peerbuff);
+			free(peerbuffcopy);
 		
 }
 
@@ -336,7 +376,7 @@ void initializeServer(int max_quota){
 	logstream=stdout;
 	
 	logging=1;
-	beeping=0;
+	beeping=1;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
