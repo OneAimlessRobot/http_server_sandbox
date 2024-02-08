@@ -7,7 +7,6 @@
 #include "../Includes/server_innards.h"
 #include <errno.h>
 #define READ_FUNC_TO_USE readall
-#define SEND_FUNC_TO_USE sendall
 static socklen_t socklenpointer;
 static int server_socket,numOfClients,*client_sockets,max_sd;
 
@@ -23,6 +22,33 @@ static char addressContainer[INET_ADDRSTRLEN];
 
 static char currDir[PATHSIZE];
 FILE* logstream;
+static void* beepnotify(void* args){
+	
+	char buff[PATHSIZE]={0};
+	snprintf(buff,PATHSIZE,"%s %d %d",CADENCE_BEEPER_PATH,BEEP_TIMES,BEEP_INTERVAL);
+	system(buff);
+	return args;
+
+}
+
+
+static void handleDisconnect(int i,int sd){
+		if(beeping){
+			pthread_t beeper;
+			pthread_create(&beeper,NULL,&beepnotify,NULL);
+			pthread_detach(beeper);
+		}
+    		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+                    if(logging){
+			fprintf(logstream,"Host disconnected. Cliente numero: %d , ip %s , port %d \n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+                    }
+			//Close the socket and mark as 0 in list for reuse
+                    close( sd );
+                    client_sockets[i] = 0;
+
+
+}
+
 static void setLinger(int socket,int onoff,int time){
 
 struct linger so_linger;
@@ -51,7 +77,7 @@ static void sigint_handler(int signal){
 	signal=0;
 	close(server_socket);
 	for(int i=0;i<numOfClients;i++){
-	if(client_sockets[i]>=0){
+	if(client_sockets[i]>0){
 		close(client_sockets[i]);
 	}
 	}
@@ -66,12 +92,14 @@ static void sigint_handler(int signal){
 
 }
 static void sigpipe_handler(int signal){
+	signal=0;
 	if(logging){
 	fprintf(logstream,"SIGPIPE!!!!!\n");
 	}
-	raise(SIGINT+signal);
+	handleDisconnect(peerToDrop,socketToClose+signal);
+	
 }
-int testOpenResource(int sd,char* resourceTarget,char* mimetype){
+int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
@@ -104,20 +132,18 @@ int testOpenResource(int sd,char* resourceTarget,char* mimetype){
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
-		sendallchunked(sd,p.pagestream);
+		sendallchunked(sd,clientIndex,p.pagestream);
 		
 		fclose(p.pagestream);
 		return 0;
 }
-
-int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
+int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpGeneralHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
-	
+	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
 	}
@@ -126,8 +152,7 @@ int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
 			}
 			return -1;
-		}
-	
+	}
 	if(logging){
 	fprintf(logstream,"Done!\n");
 	}
@@ -145,18 +170,10 @@ int testOpenResourcefd(int sd,char* resourceTarget,char* mimetype){
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
-		sendallchunkedfd(sd,p.pagefd);
+		sendallchunkedfd(sd,clientIndex,p.pagefd);
 		
 		close(p.pagefd);
 		return 0;
-}
-static void* beepnotify(void* args){
-	
-	char buff[PATHSIZE]={0};
-	snprintf(buff,PATHSIZE,"%s %d %d",CADENCE_BEEPER_PATH,BEEP_TIMES,BEEP_INTERVAL);
-	system(buff);
-	return args;
-
 }
 
 static void initializeClients(void){
@@ -170,7 +187,7 @@ FD_ZERO(&readfds);
          int sd = client_sockets[i];   
                  
             //if valid socket descriptor then add to read list  
-            if(sd > 0)   
+            if(sd >= 0)   
                 FD_SET( sd , &readfds);   
                  
             //highest file descriptor number, need it for the select function  
@@ -208,7 +225,7 @@ static void handleIncommingConnections(void){
             for (int i = 0; i < numOfClients; i++)
             {
                 //if position is empty
-                if( client_sockets[i] >= 0 )
+                if( !client_sockets[i] )
                 {
                     client_sockets[i] = client_socket;
                     if(logging){
@@ -220,29 +237,12 @@ static void handleIncommingConnections(void){
 }
 
 }
-static void handleDisconnect(int i,int sd){
-		if(beeping){
-			pthread_t beeper;
-			pthread_create(&beeper,NULL,&beepnotify,NULL);
-			pthread_detach(beeper);
-		}
-    		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-                    if(logging){
-			fprintf(logstream,"Host disconnected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
-                    }
-			//Close the socket and mark as 0 in list for reuse
-                    close( sd );
-                    client_sockets[i] = -1;
+static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 
-
+	return testOpenResourcefd(sd,clientIndex,buff,mimetype);
 }
 
-static int sendMediaData(int sd,char* buff,char* mimetype){
-
-	return testOpenResource(sd,buff,mimetype);
-}
-
-static void handleCurrentActivity(int sd,http_request req){
+static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 	http_header header=req.header;
 	switch(header.type){
 	case GET:
@@ -250,7 +250,7 @@ static void handleCurrentActivity(int sd,http_request req){
 			
 		if(!strcmp(header.target,"/")){
 		
-			sendMediaData(sd,defaultTarget,defaultMimetype);
+			sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
 		
 		}
 		else{
@@ -263,14 +263,11 @@ static void handleCurrentActivity(int sd,http_request req){
 				char targetinout[PATHSIZE]={0};
 				handleCustomGetReq(string,targetinout);
 				
-				sendMediaData(sd,targetinout,defaultMimetype);
+				sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
 			
 			}
 			else{
-			char* argv2[2];
-			memset(argv2,0,2*sizeof(char*));
-			splitString(string,"?",argv2);
-			sendMediaData(sd,argv2[0],header.mimetype);
+				sendMediaData(sd,clientIndex,header.target,header.mimetype);
 			}
 		}
 	break;
@@ -278,7 +275,7 @@ static void handleCurrentActivity(int sd,http_request req){
 		
 		if(!strcmp(header.target,"/")){
 		
-			sendMediaData(sd,defaultTarget,defaultMimetype);
+			sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
 		
 		}
 		else{
@@ -292,18 +289,19 @@ static void handleCurrentActivity(int sd,http_request req){
 				
 				handleCustomPostReq(string,req.data,targetinout);
 				
-				sendMediaData(sd,targetinout,defaultMimetype);
+				sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
 				
 			}
 			else{
 
-				sendMediaData(sd,defaultTarget,defaultMimetype);
+				
+				sendMediaData(sd,clientIndex,header.target,defaultMimetype);
 			}
 		}
 	break;
 	default:
 		
-		sendMediaData(sd,defaultTarget,defaultMimetype);
+		sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
 	break;
 	}
 }
@@ -324,7 +322,7 @@ static void handleCurrentConnections(int i,int sd){
 				fprintf(logstream,"Recebemos request!!!:\n");
 				print_http_req(logstream,req);
 				}
-				handleCurrentActivity(sd,req);
+				handleCurrentActivity(sd,i,req);
 				free(req.data);
 			}
 			}
@@ -376,7 +374,7 @@ void initializeServer(int max_quota){
 	logstream=stdout;
 	
 	logging=1;
-	beeping=1;
+	beeping=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){

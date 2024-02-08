@@ -26,7 +26,7 @@ int readsome(int sd,char buff[],u_int64_t size){
                 iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
                 if(iResult>0){
 
-                return read(sd,buff,size);
+                return recv(sd,buff,size,0);
 
                 }
                return -2;
@@ -43,7 +43,7 @@ int sendsome(int sd,char buff[],u_int64_t size){
                 iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
                 if(iResult>0){
 
-                return write(sd,buff,size);
+                return send(sd,buff,size,0);
                 }
                return -2;
 }
@@ -87,52 +87,12 @@ int iResult=0;
 		}
 		return -2;
 }
-int timedsendall(int sd,char* buff,int64_t size){
-
-int counter=0;
-int iResult=0;
-	while(counter<=MAXTRIES){
-		counter++;
-		int iResult;
-                struct timeval tv;
-                fd_set rfds;
-                FD_ZERO(&rfds);
-                FD_SET(sd,&rfds);
-                tv.tv_sec=BIGTIMEOUTSECS;
-                tv.tv_usec=BIGTIMEOUTUSECS;
-                iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
- 	        if(iResult>0){
-
-                return sendall(sd,buff,size);
-                }
-		else if(iResult<0){
-
-		break;
-		}
-		if(logging){
-		fprintf(logstream,"A tentar send! Tentativa %d de %d falhou!\n",counter,MAXTRIES);
-		}
-	}
-		
-		if(!iResult){
-		if(logging){
-		fprintf(logstream,"socket deu timeout!!\navisando server para dropar cliente!\n");
-		}
-		return -2;
-		}
-		else{
-		if(logging){
-		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n%s\n",strerror(errno));
-		}
-		}
-		return -2;
-}
 int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
 	char* ptr= buff;
 	char bufftmp[BUFFSIZE]={0};
-while((len=readsome(sd,bufftmp,BUFFSIZE))>0){
+while((len=read(sd,bufftmp,BUFFSIZE))>0){
         //printf("Li!!!!\n");
 	ptr+=snprintf(ptr,BUFFSIZE,"%s",bufftmp);
 	memset(bufftmp,0,BUFFSIZE);
@@ -172,7 +132,7 @@ while((len=readsome(sd,bufftmp,BUFFSIZE))>0){
 
 }
 
-int sendallchunked(int sd,FILE* stream){
+int sendallchunked(int sd,int clientIndex,FILE* stream){
 
 char buff[BUFFSIZE];
 char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
@@ -185,29 +145,58 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        int sent = write(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
+        int sent = send(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent,0);
         if(sent<0){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
-		fprintf(logstream,"Block no sending!!!!: %s\n",strerror(errno));
+		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
                 }
 		break;
 		//continue;
 	
         }
 
-        else{
+        else if(errno == ECONNRESET){
 		if(logging){
-                fprintf(logstream,"Outro erro qualquer!!!!: %s\n",strerror(errno));
+                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
                 }
+		peerToDrop=clientIndex;
+		socketToClose=sd;
 		//raise(SIGINT);
-		break;
+		return 0;
 		//continue
         }
+	else{
+		if(logging){
+                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
+                }
+		break;
+		//continue
+	
+	}
         }
+	else{
 
-        totalsent += sent;
-    }
+	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	totalsent += sent;
+    	}
+	}
+        if(errno){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		//break;
+		continue;
+        }
+	else{
+		if(logging){
+		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		
+	}
+	}
 }
 
 // Send final zero-sized chunk
@@ -215,7 +204,7 @@ send(sd, "0\r\n\r\n", 5, 0);
 return 0;
 }
 
-int sendallchunkedfd(int sd,int fd){
+int sendallchunkedfd(int sd,int clientIndex,int fd){
 
 char buff[BUFFSIZE];
 char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
@@ -228,92 +217,61 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        int sent = write(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
+        int sent = send(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent,0);
         if(sent<0){
-	
-        if(sent==-2){
-		if(logging){
-                fprintf(logstream,"Timeout no sending!!!!\n");
-                }
-		//break;
-                continue;
-        }
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
-		fprintf(logstream,"Block no sending!!!!: %s\n",strerror(errno));
+		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
                 }
 		break;
-        	//continue
-	}
+		//continue;
+	
+        }
 
-        else{
+        else if(errno == ECONNRESET){
 		if(logging){
-                fprintf(logstream,"Outro erro qualquer!!!!: %s\n",strerror(errno));
+                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
+                }
+		peerToDrop=clientIndex;
+		socketToClose=sd;
+		//raise(SIGINT);
+		return 0;
+		//continue
+        }
+	else{
+		if(logging){
+                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
                 }
 		break;
+		//continue
+	
+	}
         }
-        }
+	else{
 
-        totalsent += sent;
-    }
+	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	totalsent += sent;
+    	}
+	}
+        if(errno){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		//break;
+		continue;
+        }
+	else{
+		if(logging){
+		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		
+	}
+	}
 }
 
 // Send final zero-sized chunk
 send(sd, "0\r\n\r\n", 5, 0);
 return 0;
-}
-
-
-int sendall(int sd,char* buff,int64_t size){
-        int64_t len=0,
-		 total=0;
-
-while(1){
-	//min(BUFFSIZE,size-total)
-	//size
-	len=write(sd,buff+total,min(BUFFSIZE,size-total));
-	if(len<0){
-	if(len==-2){
-		continue;
-		//break;
-	}
-	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-		//break;
-		continue;
-	}
-	else{
-	break;
-	}
-	}
-	total+=len;
-	if(!len){
-	break;
-	}
-	if(total==size){
-	break;
-	}
-}
-	
-	if(len<0){
-	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        	if(logging){
-		fprintf(logstream,"Li %ld ao todo!!!! readall bem sucedido!! A socket e %d\n",total,sd);
-		}
-	}
-	else if(errno==ENOTCONN){
-		if(logging){
-		fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall saiu com erro!!!!!:\nAvisando server para desconectar!\n%s\n",total,size,strerror(errno));
-		}
-		return -2;
-
-	}
-	else {
-		if(logging){
-		fprintf(logstream,"Enviei %ld ao todo de %ld!!!! sendall saiu com erro!!!!!:\n%s\n",total,size,strerror(errno));
-		}
-	}
-	
-	}
-        return total;
-
 }
