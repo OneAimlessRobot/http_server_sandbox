@@ -2,7 +2,7 @@
 #define BUFFSIZES_H
 
 #define BUFFSIZE 4096
-#define PATHSIZE 1024
+#define PATHSIZE 2048
 #define FIELDSIZE 1024
 #define PAGE_DATA_SIZE 10000
 #define ARGVMAX 100

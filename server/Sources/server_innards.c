@@ -262,11 +262,19 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 				char targetinout[PATHSIZE]={0};
 				handleCustomGetReq(string,targetinout);
 				
-				sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
+				if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
+					
+					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+
+				}
 			
 			}
 			else{
-				sendMediaData(sd,clientIndex,header.target,header.mimetype);
+				if(sendMediaData(sd,clientIndex,header.target,header.mimetype)<0){
+					
+					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+
+				}
 			}
 		}
 	break;
@@ -287,14 +295,21 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 				char targetinout[PATHSIZE]={0};
 				
 				handleCustomPostReq(string,req.data,targetinout);
-				
-				sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
-				
+				if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
+					
+					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+
+				}
+
 			}
 			else{
 
 				
-				sendMediaData(sd,clientIndex,header.target,defaultMimetype);
+				if(sendMediaData(sd,clientIndex,header.target,header.mimetype)<0){
+					
+					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+
+				}
 			}
 		}
 	break;

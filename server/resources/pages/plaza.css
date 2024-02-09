@@ -1,3 +1,4 @@
+@charset "UTF-8";
 
 img {
   display: block; /* the default for span */
@@ -43,8 +44,13 @@ div.cars {
   background-color: rgba(0, 0,255,0.5);
 }
  body {
-  background-image: url('chikoi.jpg');
- background-repeat: no-repeat;
+  background-image: url('../images/chikoi.jpg');
+  display: block; /* the default for span */
+  background-repeat: no-repeat;
   background-attachment: fixed;
   background-size: 100% 100%;
+}
+audio.song {
+  
+  display: block; /* the default for span */
 }

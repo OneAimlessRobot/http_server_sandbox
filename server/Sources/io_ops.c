@@ -14,7 +14,7 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
-
+#define SEND_FUNC_TO_USE write
 int readsome(int sd,char buff[],u_int64_t size){
                 int iResult;
                 struct timeval tv;
@@ -145,7 +145,7 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        int sent = send(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent,0);
+        int sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
         if(sent<0){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
@@ -219,7 +219,7 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        int sent = send(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent,0);
+        int sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
         if(sent<0){
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
@@ -245,7 +245,7 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
                 fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
                 }
 		break;
-		//continue
+		//continue;
 	
 	}
         }

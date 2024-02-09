@@ -1,14 +1,6 @@
-
- h2.LABELTITLE {
-
-
-}
-div.LABEL {
-
-color: red;
-}
-body {
-  background-image: url('poly.jpg');
+@charset "UTF-8";
+ body {
+  background-image: url('../images/madoi.jpeg');
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-size: 100% 100%;
