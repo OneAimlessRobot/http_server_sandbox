@@ -21,8 +21,8 @@
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "server_vars.h"
 #include "buffSizes.h"
+#include "server_vars.h"
 #include "filePaths.h"
 #include "auxFuncs.h"
 #include "resource_consts.h"

@@ -14,7 +14,7 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	char* pathbuff=malloc(PATHSIZE);
 	memset(pathbuff,0,PATHSIZE);
 	char* argv2[ARGVMAX]={0};
-	snprintf(pathbuff,PATHSIZE,"%s/ventNumber%d",VENTS_PATH,currvent);
+	snprintf(pathbuff,PATHSIZE,"%s/resources/vents/ventNumber%d",currDir,currvent);
 	FILE* stream=NULL;
 	if(!(stream=fopen(pathbuff,"ab+"))){
 

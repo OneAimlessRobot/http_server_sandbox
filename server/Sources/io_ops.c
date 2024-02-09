@@ -8,8 +8,8 @@
 #include <errno.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include "../Includes/server_vars.h"
 #include "../Includes/buffSizes.h"
+#include "../Includes/server_vars.h"
 #include "../Includes/http_req_parser.h"
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"

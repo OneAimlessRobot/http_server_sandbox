@@ -20,7 +20,6 @@ static char* peerbuffcopy=NULL;
 
 static char addressContainer[INET_ADDRSTRLEN];
 
-static char currDir[PATHSIZE];
 FILE* logstream;
 static void* beepnotify(void* args){
 	
