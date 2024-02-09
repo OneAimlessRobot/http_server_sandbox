@@ -10,7 +10,7 @@ typedef struct page{
 	int header_size,data_size;
 	header_fill_func_type headerFillFunc;
 }page;
-
+extern char* args[];
 extern page mainpage,notfoundpage;
 
 extern char* logfpath,* defaultTarget,* defaultVersion,* defaultMimetype,*notFoundTarget,*testScriptTarget;

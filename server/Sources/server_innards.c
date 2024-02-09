@@ -363,7 +363,7 @@ static void mainLoop(void){
 
 }
 
-void initializeServer(int max_quota){
+void initializeServer(int max_quota,int logs){
 	/*
 	if(!(logstream=fopen(logfpath,"w"))){
 	
@@ -373,7 +373,7 @@ void initializeServer(int max_quota){
 	*/
 	logstream=stdout;
 	
-	logging=1;
+	logging=logs;
 	beeping=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);

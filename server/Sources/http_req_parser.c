@@ -78,7 +78,7 @@ http_header_field* make_http_header_field_arr(char *strarr[ARGVMAX]) {
 return arr;
 }
 
-http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]){
+http_header spawnHTTPHeader(char* buff){
 	http_header result;
 	result.type=INVALID;
 	memset(result.target,0,FIELDSIZE);
@@ -122,7 +122,7 @@ http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]){
 
 }
 
-http_request spawnHTTPRequest(char buff[PAGE_DATA_SIZE]){
+http_request spawnHTTPRequest(char *buff){
 	http_request result;
 	char* splitRequest[2];
 	splitString(buff,"\r\n\r\n",splitRequest);

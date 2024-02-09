@@ -176,8 +176,10 @@ while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
 	}
         }
 	else{
-
+	
+	if(logging){
 	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	}
 	totalsent += sent;
     	}
 	}
@@ -248,8 +250,9 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 	}
         }
 	else{
-
+	if(logging){
 	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	}
 	totalsent += sent;
     	}
 	}

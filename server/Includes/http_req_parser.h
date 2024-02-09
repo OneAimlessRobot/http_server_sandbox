@@ -33,9 +33,9 @@ http_header_field* make_http_header_field_arr(char *strarr[ARGVMAX]);
 
 void print_field_arr(FILE* fstream,http_header_field* fields);
 
-http_header spawnHTTPHeader(char buff[PAGE_DATA_SIZE]);
+http_header spawnHTTPHeader(char *buff);
 
-http_request spawnHTTPRequest(char buff[PAGE_DATA_SIZE]);
+http_request spawnHTTPRequest(char *buff);
 
 void print_http_req_header(FILE* fstream,http_header header);
 

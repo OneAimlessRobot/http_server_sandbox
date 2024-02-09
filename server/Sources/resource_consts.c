@@ -7,7 +7,7 @@
 
 
 
-char *args[]={"<numero de clientes>",NULL};
+char *args[]={"<numero de clientes>","<permites logging? (1 ou 0)>",NULL};
 //char *args[]={"<path de resource>,<path de destino (relativa ao wd do exec)>",NULL};
 
 

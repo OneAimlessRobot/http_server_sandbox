@@ -14,10 +14,9 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	char* pathbuff=malloc(PATHSIZE);
 	memset(pathbuff,0,PATHSIZE);
 	char* argv2[ARGVMAX]={0};
-	printf("cheguei!!!!\n");
 	snprintf(pathbuff,PATHSIZE,"%s/ventNumber%d",VENTS_PATH,currvent);
 	FILE* stream=NULL;
-	if(!(stream=fopen(pathbuff,"wb+"))){
+	if(!(stream=fopen(pathbuff,"ab+"))){
 
 		fprintf(logstream,"ERRO A ABRIR VENT!!!!!\n%s\n",strerror(errno));
 		return;
@@ -38,7 +37,6 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	free(pathbuff);
 	memcpy(targetinout,testScriptTarget,strlen(testScriptTarget));
 	fclose(stream);
-	printf("cheguei!!!!\n");	
 }
 
 int isCustomGetReq(char* nulltermedtarget){
@@ -67,7 +65,6 @@ void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 	memset(argv2,0,2*sizeof(char*));
 	splitString(targetcopy,"?",argv2);
 	if(!strcmp(argv2[0],WRITE_VENT_REQ)){
-		printf("cheguei!!!!\n");
 		handleVentReq(argv2[1],targetinout);
 		currvent++;
 	}
@@ -93,7 +90,6 @@ void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 void handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]){
 	
 	if(!strcmp(target,WRITE_VENT_REQ)){
-		printf("cheguei!!!!\n");
 		handleVentReq(contents,targetinout);
 		currvent++;
 	}
