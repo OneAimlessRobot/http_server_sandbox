@@ -16,7 +16,7 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	char* argv2[ARGVMAX]={0};
 	snprintf(pathbuff,PATHSIZE,"%s/resources/vents/ventNumber%d",currDir,currvent);
 	FILE* stream=NULL;
-	if(!(stream=fopen(pathbuff,"ab+"))){
+	if(!(stream=fopen(pathbuff,"wb+"))){
 
 		fprintf(logstream,"ERRO A ABRIR VENT!!!!!\n%s\n",strerror(errno));
 		return;
@@ -37,6 +37,34 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	free(pathbuff);
 	memcpy(targetinout,testScriptTarget,strlen(testScriptTarget));
 	fclose(stream);
+}
+static void handleVentReqFd(char* fieldmess,char targetinout[PATHSIZE]){
+	char* pathbuff=malloc(PATHSIZE);
+	memset(pathbuff,0,PATHSIZE);
+	char* argv2[ARGVMAX]={0};
+	snprintf(pathbuff,PATHSIZE,"%s/resources/vents/ventNumber%d",currDir,currvent);
+	int stream;
+	if((stream=open(pathbuff,O_CREAT|O_TRUNC|O_WRONLY,0777))<0){
+
+		fprintf(logstream,"ERRO A ABRIR VENT!!!!!\npath: %s\nErro: %d %s\n",pathbuff,errno,strerror(errno));
+		return;
+	}
+	int size=makeargvdelim(fieldmess,"&",argv2,ARGVMAX);
+	for(int i=0;i<size;i++){
+		char* pair[2]={0};
+		splitString(argv2[i],"=",pair);
+		if(!strcmp(pair[0],"venttitle")||!strcmp(pair[0],"ventcontent")){
+		replaceStringCharacter(pair[1],'+',' ');
+		write(stream,pair[0],strlen(pair[0]));
+		write(stream,": ",2);
+		write(stream,pair[1],strlen(pair[1]));
+		write(stream,"\n",1);
+		}
+		
+	}
+	free(pathbuff);
+	memcpy(targetinout,testScriptTarget,strlen(testScriptTarget));
+	close(stream);
 }
 
 int isCustomGetReq(char* nulltermedtarget){
@@ -65,7 +93,7 @@ void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 	memset(argv2,0,2*sizeof(char*));
 	splitString(targetcopy,"?",argv2);
 	if(!strcmp(argv2[0],WRITE_VENT_REQ)){
-		handleVentReq(argv2[1],targetinout);
+		handleVentReqFd(argv2[1],targetinout);
 		currvent++;
 	}
 	/*else if(!strcmp(nulltermedtarget,writeventreq)){

@@ -16,6 +16,7 @@ typedef struct http_header{
 		host[FIELDSIZE],
 		mimetype[FIELDSIZE],
 		os[FIELDSIZE];
+	int content_length;
 
 }http_header;
 

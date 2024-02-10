@@ -49,7 +49,7 @@ void print_field_arr(FILE* fstream,http_header_field* fields){
 }
 void print_http_req_header(FILE* fstream,http_header header){
 
-		fprintf(fstream,"HTTP REQUEST HEADER:\n\nType: %s\nTarget: %s\nVersion: %s\nHost: %s\nmimetype: %s\nOS: %s\n",getREQStringFromType(header.type),header.target,header.version,header.host,header.mimetype,header.os);
+		fprintf(fstream,"HTTP REQUEST HEADER:\n\nType: %s\nTarget: %s\nVersion: %s\nHost: %s\nmimetype: %s\nOS: %s\nContent-Length: %d\n",getREQStringFromType(header.type),header.target,header.version,header.host,header.mimetype,header.os,header.content_length);
 
 }
 static char* find_field_value_in_field_arr(char* fieldName,http_header_field* fields){
@@ -114,6 +114,7 @@ http_header* spawnHTTPHeader(char* buff){
 	//strcpy(result.mimetype,find_field_value_in_field_arr("Accept",fieldarr));
 	strcpy(result->mimetype,defaultMimetype);
 	strcpy(result->os,find_field_value_in_field_arr("sec-ch-ua-platform",fieldarr));
+	result->content_length=atoi(find_field_value_in_field_arr("Content-Length",fieldarr));
 	}
 	free(test);
 	free(fieldarr);

@@ -315,7 +315,7 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 	break;
 	default:
 		
-		sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
+		sendMediaData(sd,clientIndex,header.target,defaultMimetype);
 	break;
 	}
 }
@@ -325,7 +325,7 @@ static void handleCurrentConnections(int i,int sd){
  			peerbuffcopy=malloc(PAGE_DATA_SIZE);
 			memset(peerbuff,0,PAGE_DATA_SIZE);
 			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
-			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=2){
+			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
@@ -333,8 +333,20 @@ static void handleCurrentConnections(int i,int sd){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
 				http_request* req=spawnHTTPRequest(peerbuff);
 				if(logging){
-				fprintf(logstream,"Recebemos request!!!:\s%s\n",peerbuffcopy);
+				fprintf(logstream,"Recebemos request!!!:\n");
 				print_http_req(logstream,*req);
+				}
+				if(!strlen(req->data)&&(req->header->content_length>0)){
+				free(req->data);
+				req->data=malloc(req->header->content_length+1);
+				memset(req->data,0,req->header->content_length+1);
+				if(timedreadall(sd,req->data,req->header->content_length)!=-2){
+
+				
+
+					fprintf(logstream,"Recebemos dados!!!: %s\n",req->data);
+				
+				}
 				}
 				handleCurrentActivity(sd,i,*req);
 				free(req->data);
