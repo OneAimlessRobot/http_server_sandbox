@@ -172,6 +172,7 @@ static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* 
 		return 1;
 
 	}
+	errno=0;
 	if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
 			if(logging){
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
@@ -433,13 +434,13 @@ static void mainLoop(void){
 
 void initializeServer(int max_quota,int logs){
 	
-	if(!(logstream=fopen(logfpath,"w"))){
+/*	if(!(logstream=fopen(logfpath,"w"))){
 	
 		perror("logs will be made to stdout!!!! could not create log file\n");
 		logstream=stdout;
 	}
-	
-	//logstream=stdout;
+*/	
+	logstream=stdout;
 	
 	logging=logs;
 	beeping=0;
