@@ -430,10 +430,10 @@ function loop() {
         hitPosition.y += 3;
 
         lastHit = time;
-/*
+
         var rnd = Math.floor( Math.random()*6 );
         Sound.playStaticSound(Sound["paddle"+rnd],0.6+Math.random()*0.4);
-   	*/
+   	
 	 }               
     
     if (distance < 150 && dify < 6 && paddle.position.z < ball.position.z && time > lastHit+500 && !hitting) {
@@ -576,10 +576,10 @@ function loop() {
         } else {
             paddleTargetAI.x += 4+Math.random()*4;
         }
-/*
+
         var rnd = Math.floor( Math.random()*6 );
         Sound.playStaticSound(Sound["paddle"+rnd],0.2+Math.random()*0.3);
-*/
+
     }
 
     // hit on table
@@ -636,10 +636,10 @@ function loop() {
         }
 
         if (Math.abs(vy) > 0.025) {
-           /* var rnd = Math.floor( Math.random()*6 );
+            var rnd = Math.floor( Math.random()*6 );
             var volume = (1*Math.max(startFriction,0.4))-(ball.position.z-bound.bottom)/(bound.top*3);
             Sound.playStaticSound(Sound["table"+rnd],volume + Math.random()*0.2);
-        	*/
+        	
 	}
     }
     
@@ -680,11 +680,11 @@ function loop() {
         vz *= 0.6;
         ballInactive = true;
         if (Math.abs(vy) > 0.025) {
-            /*var rnd = Math.floor( Math.random()*2 );
+            var rnd = Math.floor( Math.random()*2 );
             var volume = Math.max(1-(distance/80000), 0.1)*0.3;
 
             Sound.playStaticSound(Sound["floor"+rnd],volume + Math.random()*0.1);
-        	*/
+        	
 	}
     }
 
