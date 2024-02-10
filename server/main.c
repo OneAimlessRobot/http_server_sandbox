@@ -1,5 +1,6 @@
 #include "Includes/preprocessor.h"
 #include "Includes/auxFuncs.h"
+#include "Includes/handlecustom.h"
 #include "Includes/server_innards.h"
 
 int main(int argc, char ** argv){
@@ -11,6 +12,14 @@ int main(int argc, char ** argv){
 		fprintf(stderr,"\n");
 		exit(-1);
 	}
-	initializeServer(atoi(argv[1]),atoi(argv[2]));
+	int nclients=0;
+	if((nclients=atoi(argv[1]))<=0){
+	
+		fprintf(stderr,"Numero invalido de clientes! (%d <= 0)\n",nclients);
+		exit(-1);
+	}
+
+	//generateDirListing(argv[1]);
+	initializeServer(nclients,atoi(argv[2]));
 	return 0;
 }

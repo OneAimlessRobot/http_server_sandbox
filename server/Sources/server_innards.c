@@ -6,6 +6,8 @@
 #include "../Includes/server_vars.h"
 #include "../Includes/server_innards.h"
 #include <errno.h>
+#include <dirent.h>
+#include <sys/types.h>
 #define READ_FUNC_TO_USE readall
 static socklen_t socklenpointer;
 static int server_socket,numOfClients,*client_sockets,max_sd;
@@ -30,6 +32,12 @@ static void* beepnotify(void* args){
 
 }
 
+static int isDirectory(const char *path) {
+   struct stat statbuf;
+   if (stat(path, &statbuf) != 0)
+       return 0;
+   return S_ISDIR(statbuf.st_mode);
+}
 
 static void handleDisconnect(int i,int sd){
 		if(beeping){
@@ -98,7 +106,7 @@ static void sigpipe_handler(int signal){
 	handleDisconnect(peerToDrop,socketToClose+signal);
 	
 }
-int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype){
+static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
@@ -107,6 +115,15 @@ int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype)
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
+	}
+	DIR* directory=opendir(p.pagepath);
+	if(directory){
+		closedir(directory);
+		if(logging){
+			fprintf(logstream,"Diretoria encontrada!!: %s\n",p.pagepath);
+		}
+		return 1;
+
 	}
 	if(!(p.pagestream=fopen(p.pagepath,"r"))){
 			if(logging){
@@ -136,7 +153,7 @@ int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype)
 		fclose(p.pagestream);
 		return 0;
 }
-int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* mimetype){
+static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* mimetype){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
@@ -145,6 +162,15 @@ int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* mimetyp
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
+	}
+	DIR* directory=opendir(p.pagepath);
+	if(directory){
+		closedir(directory);
+		if(logging){
+			fprintf(logstream,"Diretoria encontrada!!: %s\n",p.pagepath);
+		}
+		return 1;
+
 	}
 	if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
 			if(logging){
@@ -260,10 +286,15 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 			if(isCustomGetReq(string)){
 				
 				char targetinout[PATHSIZE]={0};
-				handleCustomGetReq(string,targetinout);
 				
-				if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
-					
+				void* ptr=NULL;
+				if((ptr=handleCustomGetReq(string,targetinout))){
+				
+					sendMediaData(sd,clientIndex,header.target,defaultMimetype);
+				
+	
+				}
+				else if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
 
 				}
@@ -275,6 +306,15 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
 
 				}
+				else if(sendMediaData(sd,clientIndex,header.target,defaultMimetype)>0){
+					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
+				}
+				else{
+					sendMediaData(sd,clientIndex,header.target,defaultMimetype);
+				
+				
+				}
+				
 			}
 		}
 	break;
@@ -392,14 +432,14 @@ static void mainLoop(void){
 }
 
 void initializeServer(int max_quota,int logs){
-	/*
+	
 	if(!(logstream=fopen(logfpath,"w"))){
 	
 		perror("logs will be made to stdout!!!! could not create log file\n");
 		logstream=stdout;
 	}
-	*/
-	logstream=stdout;
+	
+	//logstream=stdout;
 	
 	logging=logs;
 	beeping=0;
