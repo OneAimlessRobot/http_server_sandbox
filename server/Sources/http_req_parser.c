@@ -78,14 +78,14 @@ http_header_field* make_http_header_field_arr(char *strarr[ARGVMAX]) {
 return arr;
 }
 
-http_header spawnHTTPHeader(char* buff){
-	http_header result;
-	result.type=INVALID;
-	memset(result.target,0,FIELDSIZE);
-	memset(result.host,0,FIELDSIZE);
-	memset(result.mimetype,0,FIELDSIZE);
-	memset(result.version,0,FIELDSIZE);
-	memset(result.os,0,FIELDSIZE);
+http_header* spawnHTTPHeader(char* buff){
+	http_header* result=malloc(sizeof(http_header));
+	result->type=INVALID;
+	memset(result->target,0,FIELDSIZE);
+	memset(result->host,0,FIELDSIZE);
+	memset(result->mimetype,0,FIELDSIZE);
+	memset(result->version,0,FIELDSIZE);
+	memset(result->os,0,FIELDSIZE);
 	char* headerArr[ARGVMAX];
 	memset(headerArr,0,ARGVMAX*sizeof(char*));
 	char* test= malloc(strlen(buff)+1);
@@ -100,20 +100,20 @@ http_header spawnHTTPHeader(char* buff){
 	char* firstHeaderArr[ARGVMAX];
 	memset(firstHeaderArr,0,ARGVMAX*sizeof(char*));
 	make_str_arr(firstHeaderBuff," ",firstHeaderArr,ARGVMAX);
-	result.type=getREQtypeFromString(firstHeaderArr[0]);
+	result->type=getREQtypeFromString(firstHeaderArr[0]);
 	if(get_string_arr_size(firstHeaderArr)==1){
-		memset(result.target,0,FIELDSIZE);
-		memset(result.version,0,FIELDSIZE);
-		strcpy(result.target,defaultTarget);
-		strcpy(result.mimetype,defaultMimetype);
+		memset(result->target,0,FIELDSIZE);
+		memset(result->version,0,FIELDSIZE);
+		strcpy(result->target,defaultTarget);
+		strcpy(result->mimetype,defaultMimetype);
 	}
 	else{
-	strcpy(result.target,firstHeaderArr[1]);
-	strcpy(result.version,firstHeaderArr[2]);
-	strcpy(result.host,find_field_value_in_field_arr("Host",fieldarr));
+	strcpy(result->target,firstHeaderArr[1]);
+	strcpy(result->version,firstHeaderArr[2]);
+	strcpy(result->host,find_field_value_in_field_arr("Host",fieldarr));
 	//strcpy(result.mimetype,find_field_value_in_field_arr("Accept",fieldarr));
-	strcpy(result.mimetype,defaultMimetype);
-	strcpy(result.os,find_field_value_in_field_arr("sec-ch-ua-platform",fieldarr));
+	strcpy(result->mimetype,defaultMimetype);
+	strcpy(result->os,find_field_value_in_field_arr("sec-ch-ua-platform",fieldarr));
 	}
 	free(test);
 	free(fieldarr);
@@ -122,22 +122,22 @@ http_header spawnHTTPHeader(char* buff){
 
 }
 
-http_request spawnHTTPRequest(char *buff){
-	http_request result;
+http_request* spawnHTTPRequest(char *buff){
+	http_request* result=malloc(sizeof(http_request));
 	char* splitRequest[2];
 	splitString(buff,"\r\n\r\n",splitRequest);
-	result.header=spawnHTTPHeader(splitRequest[0]);
+	result->header=spawnHTTPHeader(splitRequest[0]);
 	if(!splitRequest[1]){
-	result.data_size=1;
+	result->data_size=1;
 	}
 	else{
-	result.data_size=strlen(splitRequest[1])+1;
+	result->data_size=strlen(splitRequest[1])+1;
 	
 	}
-	result.data=malloc(result.data_size);
-	memset(result.data,0,result.data_size);
+	result->data=malloc(result->data_size);
+	memset(result->data,0,result->data_size);
 	if(splitRequest[1]){
-	memcpy(result.data,splitRequest[1],result.data_size-1);
+	memcpy(result->data,splitRequest[1],result->data_size-1);
 	}
 	return result;
 
@@ -146,7 +146,7 @@ http_request spawnHTTPRequest(char *buff){
 
 void print_http_req(FILE* fstream,http_request req){
 	fprintf(fstream,"HTTP_REQUEST:\n");
-	print_http_req_header(fstream,req.header);
+	print_http_req_header(fstream,*(req.header));
 	fprintf(fstream,"HTTP_REQUEST_CONTENTS=%s\n",req.data);
 
 }

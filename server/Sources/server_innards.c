@@ -242,7 +242,7 @@ static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 }
 
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){
-	http_header header=req.header;
+	http_header header=*(req.header);
 	switch(header.type){
 	case GET:
 	
@@ -331,13 +331,15 @@ static void handleCurrentConnections(int i,int sd){
 			}
 			else if(strlen(peerbuff)){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
-				http_request req=spawnHTTPRequest(peerbuff);
+				http_request* req=spawnHTTPRequest(peerbuff);
 				if(logging){
-				fprintf(logstream,"Recebemos request!!!:\n");
-				print_http_req(logstream,req);
+				fprintf(logstream,"Recebemos request!!!:\s%s\n",peerbuffcopy);
+				print_http_req(logstream,*req);
 				}
-				handleCurrentActivity(sd,i,req);
-				free(req.data);
+				handleCurrentActivity(sd,i,*req);
+				free(req->data);
+				free(req->header);
+				free(req);
 			}
 			}
 			else{
