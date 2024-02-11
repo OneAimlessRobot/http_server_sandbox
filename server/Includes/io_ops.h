@@ -7,6 +7,10 @@ int sendallchunked(int sd,int clientIndex,FILE* stream);
 
 int sendallchunkedfd(int sd,int clientIndex,int fd);
 
+int sendnormal(int sd,int clientIndex,FILE* stream);
+
+int sendnormalfd(int sd,int clientIndex,int fd);
+
 int timedreadall(int sd,char* buff,int64_t size);
 
 #endif

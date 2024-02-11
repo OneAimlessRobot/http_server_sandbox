@@ -111,7 +111,8 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
-	p.headerFillFunc=&fillUpGeneralHeader;
+	//p.headerFillFunc=&fillUpChunkedHeader;
+	p.headerFillFunc=&fillUpNormalHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
@@ -125,6 +126,7 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 		return 1;
 
 	}
+	errno=0;
 	if(!(p.pagestream=fopen(p.pagepath,"r"))){
 			if(logging){
 			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
@@ -139,8 +141,8 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 		fseek(p.pagestream,0,SEEK_SET);
 		
 		char headerBuff[PATHSIZE]={0};
-		p.headerFillFunc(headerBuff,p.data_size,mimetype);
-
+		//p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
+		p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
 		p.header_size=strlen(headerBuff);
 		
 			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
@@ -148,7 +150,7 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
-		sendallchunked(sd,clientIndex,p.pagestream);
+		sendnormal(sd,clientIndex,p.pagestream);
 		
 		fclose(p.pagestream);
 		return 0;
@@ -158,7 +160,8 @@ static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
-	p.headerFillFunc=&fillUpGeneralHeader;
+	//p.headerFillFunc=&fillUpChunkedHeader;
+	p.headerFillFunc=&fillUpNormalHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
@@ -187,8 +190,9 @@ static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* 
 		lseek(p.pagefd,0,SEEK_SET);
 		
 		char headerBuff[PATHSIZE]={0};
-		p.headerFillFunc(headerBuff,p.data_size,mimetype);
-
+		//p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
+		p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
+		
 		p.header_size=strlen(headerBuff);
 		
 			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
@@ -196,7 +200,7 @@ static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* 
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
-		sendallchunkedfd(sd,clientIndex,p.pagefd);
+		sendnormalfd(sd,clientIndex,p.pagefd);
 		
 		close(p.pagefd);
 		return 0;
@@ -265,7 +269,7 @@ static void handleIncommingConnections(void){
 }
 static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 
-	return testOpenResourcefd(sd,clientIndex,buff,mimetype);
+	return testOpenResource(sd,clientIndex,buff,mimetype);
 }
 
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){

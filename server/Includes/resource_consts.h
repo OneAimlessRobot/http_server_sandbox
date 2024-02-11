@@ -1,6 +1,6 @@
 #ifndef RESOURCE_CONSTS_H
 #define RESOURCE_CONSTS_H
-typedef void (*header_fill_func_type)(char headerBuff[PATHSIZE], u_int64_t size,char* ext);
+typedef void (*header_fill_func_type)(char headerBuff[PATHSIZE],char* headerTemplate, u_int64_t size,char* ext);
 
 typedef struct page{
 

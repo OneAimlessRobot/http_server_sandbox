@@ -278,3 +278,139 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 send(sd, "0\r\n\r\n", 5, 0);
 return 0;
 }
+
+
+int sendnormal(int sd,int clientIndex,FILE* stream){
+
+char buff[BUFFSIZE];
+char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
+int numread;
+
+while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
+	printf("DID IT!\n");
+    int totalsent = 0;
+    while (totalsent < numread) {
+        int sent = SEND_FUNC_TO_USE(sd, buff+totalsent, numread - totalsent);
+        if(sent<0){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		//continue;
+	
+        }
+
+        else if(errno == ECONNRESET){
+		if(logging){
+                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
+                }
+		peerToDrop=clientIndex;
+		socketToClose=sd;
+		//raise(SIGINT);
+		return 0;
+		//continue
+        }
+	else{
+		if(logging){
+                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
+                }
+		break;
+		//continue;
+	
+	}
+        }
+	else{
+	if(logging){
+	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	}
+	totalsent += sent;
+    	}
+	}
+        if(errno){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		//break;
+		continue;
+        }
+	else{
+		if(logging){
+		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		
+	}
+	}
+}
+send(sd, "\r\n\r\n", 5, 0);
+return 0;
+}
+int sendnormalfd(int sd,int clientIndex,int fd){
+
+char buff[BUFFSIZE];
+char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
+int numread;
+
+while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
+	printf("DID IT!\n");
+    int totalsent = 0;
+    while (totalsent < numread) {
+        int sent = SEND_FUNC_TO_USE(sd, buff+totalsent, numread - totalsent);
+        if(sent<0){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		//continue;
+	
+        }
+
+        else if(errno == ECONNRESET){
+		if(logging){
+                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
+                }
+		peerToDrop=clientIndex;
+		socketToClose=sd;
+		//raise(SIGINT);
+		return 0;
+		//continue
+        }
+	else{
+		if(logging){
+                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
+                }
+		break;
+		//continue;
+	
+	}
+        }
+	else{
+	if(logging){
+	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
+	}
+	totalsent += sent;
+    	}
+	}
+        if(errno){
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		//break;
+		continue;
+        }
+	else{
+		if(logging){
+		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		
+	}
+	}
+}
+send(sd, "\r\n\r\n", 5, 0);
+return 0;
+}
