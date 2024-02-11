@@ -1,7 +1,7 @@
 #ifndef BUFFSIZES_H
 #define BUFFSIZES_H
 
-#define BUFFSIZE 4096
+#define BUFFSIZE 50
 #define PATHSIZE 1024
 #define FIELDSIZE 1024
 #define PAGE_DATA_SIZE 5000
