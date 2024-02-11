@@ -14,16 +14,16 @@ typedef struct pipestruct{
 
 }pipestruct;
 
-char* tmpOne="/tmp.html",* tmpTwo="/tmp1.html";
+char* tmpOne="/.tmp.html",* tmpTwo="/.tmp1.html";
 static int currvent=0;
 char* customgetreqs[]={WRITE_VENT_REQ,SEE_FILES_REQ,NULL};
 
 char* custompostreqs[]={WRITE_VENT_REQ,NULL};
 
-char* dirListing[ARGVMAX];
+
 char* tmpDir=NULL;
 char* tmpDir2=NULL;
-
+char* currSearchedDir=NULL;
 static pipestruct* redirectFd1ToFd1(int fd1,int fd2){
 	dup2(fd1,fd2);
 
@@ -35,12 +35,15 @@ static void generateDirListingPrimitive(char* path){
 	memset(tmpDir,0,PATHSIZE);
 	tmpDir2=malloc(PATHSIZE);
 	memset(tmpDir2,0,PATHSIZE);
+	currSearchedDir=malloc(PATHSIZE);
+	memset(currSearchedDir,0,PATHSIZE);
 	snprintf(tmpDir,PATHSIZE,"%s/resources%s",currDir,tmpOne);
 	snprintf(tmpDir2,PATHSIZE,"%s/resources%s",currDir,tmpTwo);
 	int outfd= open(tmpDir,O_TRUNC|O_WRONLY|O_CREAT,0777);
 	char* cmd= malloc(PATHSIZE);
 	memset(cmd,0,PATHSIZE);
-	snprintf(cmd,PATHSIZE,"ls -1 %s/resources%s > %s",currDir,path,tmpDir);
+	snprintf(currSearchedDir,PATHSIZE,"%s/resources%s",currDir,path);
+	snprintf(cmd,PATHSIZE,"ls -1 %s > %s",currSearchedDir,tmpDir);
 	system(cmd);
 	free(cmd);
 	close(outfd);
@@ -67,10 +70,20 @@ char* generateDirListing(char* dir){
 		}
 		return NULL;
 	}
+	remove(tmpDir);
+	int noRoot=strcmp(currSearchedDir,RESOURCES_PATH);
 	char* currListing=malloc(BUFFSIZE);
 	memset(currListing,0,BUFFSIZE);
-	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>\n<h1>DIRETORIA ROOT DO SERVER!!!!!</h1>\n<br>\n");
+	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>");
+	if(!noRoot){
+
+		dprintf(fd,"\n<h1>DIRETORIA ROOT DO SERVER!!!!!</h1>");
+	}
+	else{
+		dprintf(fd,"\n<br>\n<h2>INDEX OF: %s</h2><br>\n<br>\n",dir);
+		dprintf(fd,"\n<br>\n<a href='..'>Prev</a><br><br><br>\n");
 	
+	}
 	while(fgets(currListing,BUFFSIZE,fstream)){
 		currListing[strlen(currListing)-1]=0;
 		dprintf(fd,"<a href='%s/%s'>%s</a><br>\n",dir,currListing,currListing);
@@ -78,12 +91,12 @@ char* generateDirListing(char* dir){
 	}
 	
 	dprintf(fd,"</body>\n</html>\n");
-	remove(tmpDir);
 	free(currListing);
 	fclose(fstream);
 	close(fd);
 	free(tmpDir);
 	free(tmpDir2);
+	free(currSearchedDir);
 	return tmpTwo;
 
 }

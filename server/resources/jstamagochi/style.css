@@ -1,0 +1,253 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;500&display=swap");
+::-moz-selection {
+  background-color: transparent;
+}
+::selection {
+  background-color: transparent;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #fafafa;
+  transition: background-color 0.3s;
+}
+
+.name {
+  font-size: 40px;
+}
+
+h1,
+h2 {
+  font-family: "DM Mono", monospace;
+  font-weight: 500;
+}
+
+h3 {
+  margin-top: 20px;
+  font-family: "DM Mono", monospace;
+  font-weight: 300;
+}
+
+.hide {
+  display: none;
+}
+
+/*MENU SCREEN*/
+.menu {
+  position: absolute;
+  top: 50vh;
+  transform: translateY(-50%);
+  width: 100%;
+  text-align: center;
+}
+
+.settings {
+  position: absolute;
+  top: 50vh;
+  transform: translateY(-50%);
+  width: 100%;
+  text-align: center;
+}
+
+.settings-buttons button {
+  display: inline-block;
+  font-size: 30px;
+  background-color: transparent;
+  border: 2px solid #131313;
+  padding: 5px 10px;
+  margin: 20px 20px 0px 20px;
+  transition: background-color 0.1s, color 0.1s;
+  text-decoration: none;
+  color: #131313;
+  font-weight: 300;
+  font-family: "DM Mono", monospace;
+}
+.settings-buttons button:hover {
+  background-color: #131313;
+  color: #fafafa;
+}
+
+.settings-buttons {
+  width: 100%;
+  text-align: center;
+}
+
+/*GAME SCREEN*/
+.tamagotchi {
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: auto;
+  top: 50vh;
+  transform: translateY(-50%);
+  font-size: 80px;
+  text-align: center;
+}
+
+#petimage {
+  width: 30%;
+  vertical-align: center;
+}
+
+span#name {
+  display: inline-block;
+  font-size: 30px;
+  color: #000000;
+  padding-bottom: 0;
+  font-family: "DM Mono", monospace;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.buttons button,
+.menu-buttons button {
+  display: inline-block;
+  font-size: 30px;
+  background-color: transparent;
+  border: 2px solid #131313;
+  padding: 10px 20px;
+  margin: 10px 20px 0px 20px;
+  transition: background-color 0.1s;
+  text-decoration: none;
+  color: #131313;
+  font-weight: 300;
+  font-family: "DM Mono", monospace;
+}
+.buttons button:hover,
+.menu-buttons button:hover {
+  background-color: #131313;
+  color: #fafafa;
+}
+
+.buttons,
+.menu-buttons button {
+  text-align: center;
+  display: inline-block;
+  font-size: 40px;
+  background-color: transparent;
+  padding: 0px 20px;
+  padding-bottom: 10px;
+  margin: 0px 20px 0px 20px;
+  transition: background-color 0.1s;
+  text-decoration: none;
+  color: #131313;
+  font-weight: 300;
+  font-family: "DM Mono", monospace;
+}
+.buttons .buttons, .menu-buttons button .buttons:hover,
+.menu-buttons button .buttons,
+.menu-buttons button .menu-buttons button:hover {
+  background-color: #131313;
+  color: #fafafa;
+}
+
+.hp {
+  font-family: "DM Mono", monospace;
+  font-weight: 300;
+  font-size: 22px;
+  width: 100%;
+  text-align: center;
+}
+
+div.hpd {
+  display: inline-block;
+}
+
+.hp span {
+  font-weight: 500;
+}
+
+@media (max-width: 860px) {
+  .hp {
+    font-size: 20px;
+  }
+  .buttons,
+  .menu-buttons,
+  .settings-buttons {
+    font-size: 30px;
+  }
+  #name {
+    font-size: 20px;
+  }
+  #t-body {
+    font-size: 50px;
+  }
+}
+@media (max-width: 540px) {
+  .hp p {
+    font-size: 20px;
+    display: block;
+  }
+  .buttons,
+  .menu-buttons,
+  .settings-buttons {
+    font-size: 20px;
+    margin: 20px 5px 0px 5px;
+  }
+  #name {
+    font-size: 20px;
+  }
+  #t-body {
+    font-size: 40px;
+  }
+}
+@media (max-width: 540px) {
+  .hp p {
+    font-size: 20px;
+    display: block;
+  }
+  .buttons,
+  .menu-buttons,
+  .settings-buttons {
+    font-size: 20px;
+    margin: 20px 2px 0px 2px;
+  }
+  #name {
+    font-size: 20px;
+  }
+  #t-body {
+    height: 300px;
+    width: auto;
+  }
+  .tamagotchi {
+    top: 120px;
+    transform: translateY(0);
+  }
+  .petimage {
+    width: 40%;
+  }
+}
+/*Night mode*/
+body.nightmode-on {
+  background-color: #111;
+  color: #fafafa;
+}
+
+body.nightmode-on .settings-buttons button {
+  color: #fafafa;
+  border: 2px solid #fafafa;
+}
+body.nightmode-on .settings-buttons button:hover {
+  background-color: #fafafa;
+  color: #111;
+}
+
+body.nightmode-on #name {
+  color: #111;
+  background-color: #fafafa;
+}
+
+body.nightmode-on .buttons button,
+body.nightmode-on .menu-buttons button {
+  color: #fafafa;
+  border: 2px solid #fafafa;
+}
+body.nightmode-on .buttons button:hover,
+body.nightmode-on .menu-buttons button:hover {
+  background-color: #fafafa;
+  color: #111;
+}/*# sourceMappingURL=style.css.map */

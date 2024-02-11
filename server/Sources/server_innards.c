@@ -270,89 +270,63 @@ static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 	http_header header=*(req.header);
+	if(!strcmp(header.target,"/")){
+
+		strcpy(header.target,"");
+	}
+	if(logging){
+		fprintf(logstream,"%s\n",header.target);
+	}
 	switch(header.type){
 	case GET:
-	
-			
-		if(!strcmp(header.target,"/")){
-		
-		
-			strcpy(header.target,"");
-		}
-		//{
-			if(logging){
-			fprintf(logstream,"%s\n",header.target);
-			}
-			char* string=header.target;
-			if(isCustomGetReq(string)){
-				
+			if(isCustomGetReq(header.target)){
+
 				char targetinout[PATHSIZE]={0};
-				
-				void* ptr=NULL;
-				if((ptr=handleCustomGetReq(string,targetinout))){
-				
-					sendMediaData(sd,clientIndex,header.target,defaultMimetype);
-				
-	
-				}
-				else if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
+
+				handleCustomGetReq(header.target,targetinout);
+				int result=sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0;
+				if(result<0){
+
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
 
 				}
-			
 			}
 			else{
-				if(sendMediaData(sd,clientIndex,header.target,header.mimetype)<0){
-					
+				int isDir=sendMediaData(sd,clientIndex,header.target,header.mimetype);
+				if(isDir<0){
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
-
+				
 				}
-				else if(sendMediaData(sd,clientIndex,header.target,defaultMimetype)>0){
+				else if(isDir>0){
 					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
+					remove(DIR_LIST_TMP_FILE_PATH);
 				}
-				else{
-					sendMediaData(sd,clientIndex,header.target,defaultMimetype);
-				
-				
-				}
-				
+
 			}
-		//}
 	break;
 	case POST:
-		
-		if(!strcmp(header.target,"/")){
-		
-			sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
-		
-		}
-		else{
-			if(logging){
-			fprintf(logstream,"%s\n",header.target);
-			}
-			char* string=header.target;
-			if(isCustomPostReq(string)){
+			if(isCustomPostReq(header.target)){
 
 				char targetinout[PATHSIZE]={0};
-				
-				handleCustomPostReq(string,req.data,targetinout);
-				if(sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0){
-					
+				handleCustomPostReq(header.target,req.data,targetinout);
+				int result=sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
+				if(result<0){
+
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
 
+					break;
 				}
-
 			}
 			else{
-
-				
-				if(sendMediaData(sd,clientIndex,header.target,header.mimetype)<0){
-					
+				int result=sendMediaData(sd,clientIndex,header.target,header.mimetype);
+				if(result<0){
 					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
-
+				}
+				else if(result>0){
+					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
+					remove(DIR_LIST_TMP_FILE_PATH);
 				}
 			}
-		}
 	break;
 	default:
 		
