@@ -283,12 +283,11 @@ return 0;
 int sendnormal(int sd,int clientIndex,FILE* stream){
 
 char buff[BUFFSIZE];
-char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
 int numread;
 
 while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
-	printf("DID IT!\n");
-    int totalsent = 0;
+
+int totalsent = 0;
     while (totalsent < numread) {
         int sent = SEND_FUNC_TO_USE(sd, buff+totalsent, numread - totalsent);
         if(sent<0){
@@ -350,12 +349,10 @@ return 0;
 int sendnormalfd(int sd,int clientIndex,int fd){
 
 char buff[BUFFSIZE];
-char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
 int numread;
 
 while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
-	printf("DID IT!\n");
-    int totalsent = 0;
+	int totalsent = 0;
     while (totalsent < numread) {
         int sent = SEND_FUNC_TO_USE(sd, buff+totalsent, numread - totalsent);
         if(sent<0){
