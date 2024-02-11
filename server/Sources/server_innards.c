@@ -276,10 +276,10 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 			
 		if(!strcmp(header.target,"/")){
 		
-			sendMediaData(sd,clientIndex,defaultTarget,defaultMimetype);
 		
+			strcpy(header.target,"");
 		}
-		else{
+		//{
 			if(logging){
 			fprintf(logstream,"%s\n",header.target);
 			}
@@ -317,7 +317,7 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 				}
 				
 			}
-		}
+		//}
 	break;
 	case POST:
 		

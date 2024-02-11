@@ -14,7 +14,7 @@ char *args[]={"<numero de clientes>","<permites logging? (1 ou 0)>",NULL};
 
 
 char* logfpath="logs.log";
-char* defaultTarget="/pages/index.html";
+char* defaultTarget="/index.html";
 char* notFoundTarget="/pages/notfound.html";
 char* testScriptTarget="/pages/testscript.html";
 char* defaultVersion="HTTP/1.1";
