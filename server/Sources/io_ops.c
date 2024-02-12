@@ -51,7 +51,7 @@ int sendsome(int sd,char buff[],u_int64_t size){
                 FD_SET(sd,&rfds);
                 tv.tv_sec=SMALLTIMEOUTSECS;
                 tv.tv_usec=SMALLTIMEOUTUSECS;
-                iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
+                iResult=select(sd+1,(fd_set*)0,&rfds,(fd_set*)0,&tv);
                 if(iResult>0){
 
                 return send(sd,buff,size,0);
@@ -75,7 +75,8 @@ int readsome_chat_gpt(int sd, char *buff, size_t size) {
     FD_SET(sd, &rfds);
     tv.tv_sec = SMALLTIMEOUTSECS;
     tv.tv_usec = SMALLTIMEOUTUSECS;
-    iResult = select(sd + 1, NULL, &rfds, NULL, &tv);
+	printf("%d\n",sd+1);
+    iResult = select(sd + 1, &rfds,(fd_set*)0, (fd_set*)0, &tv);
     if (iResult > 0) {
         return recv(sd, buff, size, 0);
     } else if (!iResult) {
@@ -115,7 +116,7 @@ int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
 while(total<size){
-        len=readsome_chat_gpt(sd,buff+total,total-size);
+        len=readsome(sd,buff+total,total-size);
 	if(!len||len==-2){
 		//fprintf(logstream,"Timeout no reading!!!!: %s\nsocket %d\n",strerror(errno),sd);
                 break;
@@ -186,21 +187,21 @@ int send_in_chunks_chunked_chat_gpt(int sd, int clientIndex, int fd) {
         // Send chunk size in hex
         char chunk_size_str[20];
         sprintf(chunk_size_str, "%zx\r\n", numread);
-        ret = sendsome_chat_gpt(sd, chunk_size_str, strlen(chunk_size_str));
+        ret = sendsome(sd, chunk_size_str, strlen(chunk_size_str));
         if (ret < 0) {
             fprintf(stderr, "Error sending chunk size: %s\n", strerror(errno));
             return -1;
         }
 
         // Send chunk data
-        ret = sendsome_chat_gpt(sd, chunk, numread);
+        ret = sendsome(sd, chunk, numread);
         if (ret < 0) {
             fprintf(stderr, "Error sending chunk data: %s\n", strerror(errno));
             return -1;
         }
 
         // Send chunk delimiter
-        ret = sendsome_chat_gpt(sd, "\r\n", 2);
+        ret = sendsome(sd, "\r\n", 2);
         if (ret < 0) {
             fprintf(stderr, "Error sending chunk delimiter: %s\n", strerror(errno));
             return -1;
@@ -208,7 +209,7 @@ int send_in_chunks_chunked_chat_gpt(int sd, int clientIndex, int fd) {
     }
 
     // Send final chunk
-    ret = sendsome_chat_gpt(sd, "0\r\n\r\n", 5);
+    ret = sendsome(sd, "0\r\n\r\n", 5);
     if (ret < 0) {
         fprintf(stderr, "Error sending final chunk: %s\n", strerror(errno));
         return -1;
