@@ -158,7 +158,6 @@ while(total<size){
 		if(logging){
 		fprintf(logstream,"Li %ld ao todo!!!! readall saiu com erro!!!!!:\nAvisando server para desconectar!\n%s\n",total,strerror(errno));
 		}
-		return -2;
 
 	}
 	else if(len==-2){
