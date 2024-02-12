@@ -3,14 +3,10 @@
 
 int readall(int sd,char* buff,int64_t size);
 
-int sendallchunked(int sd,int clientIndex,FILE* stream);
-
 int sendallchunkedfd(int sd,int clientIndex,int fd);
-
-int sendnormal(int sd,int clientIndex,FILE* stream);
 
 int sendnormalfd(int sd,int clientIndex,int fd);
 
-int timedreadall(int sd,char* buff,int64_t size);
+int send_in_chunks_chunked_chat_gpt(int sd, int clientIndex, int fd);
 
 #endif

@@ -4,11 +4,14 @@
 #include "../Includes/http_req_parser.h"
 #include "../Includes/handlecustom.h"
 #include "../Includes/server_vars.h"
+#include "../Includes/send_resource_func.h"
 #include "../Includes/server_innards.h"
+#include <sys/socket.h>
 #include <errno.h>
 #include <dirent.h>
 #include <sys/types.h>
 #define READ_FUNC_TO_USE readall
+#define SEND_SOCK_BUFF_SIZE 10000000
 static socklen_t socklenpointer;
 static int server_socket,numOfClients,*client_sockets,max_sd;
 
@@ -106,106 +109,6 @@ static void sigpipe_handler(int signal){
 	handleDisconnect(peerToDrop,socketToClose+signal);
 	
 }
-static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mimetype){
-
-	page p;
-	memset(p.pagepath,0,PATHSIZE);
-	char* ptr= p.pagepath;
-	p.headerFillFunc=&fillUpChunkedHeader;
-	//p.headerFillFunc=&fillUpNormalHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
-	if(logging){
-	fprintf(logstream,"Fetching %s...\n",p.pagepath);
-	}
-	DIR* directory=opendir(p.pagepath);
-	if(directory){
-		closedir(directory);
-		if(logging){
-			fprintf(logstream,"Diretoria encontrada!!: %s\n",p.pagepath);
-		}
-		return 1;
-
-	}
-	errno=0;
-	if(!(p.pagestream=fopen(p.pagepath,"r"))){
-			if(logging){
-			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
-			}
-			return -1;
-	}
-	if(logging){
-	fprintf(logstream,"Done!\n");
-	}
-		fseek(p.pagestream,0,SEEK_END);
-		p.data_size=ftell(p.pagestream)+1;
-		fseek(p.pagestream,0,SEEK_SET);
-		
-		char headerBuff[PATHSIZE]={0};
-		p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
-		//p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
-		p.header_size=strlen(headerBuff);
-		
-			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
-				if(logging){
-				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-				}
-			}
-		sendnormal(sd,clientIndex,p.pagestream);
-		
-		fclose(p.pagestream);
-		return 0;
-}
-static int testOpenResourcefd(int sd,int clientIndex,char* resourceTarget,char* mimetype){
-
-	page p;
-	memset(p.pagepath,0,PATHSIZE);
-	char* ptr= p.pagepath;
-	//p.headerFillFunc=&fillUpChunkedHeader;
-	p.headerFillFunc=&fillUpNormalHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
-	if(logging){
-	fprintf(logstream,"Fetching %s...\n",p.pagepath);
-	}
-	DIR* directory=opendir(p.pagepath);
-	if(directory){
-		closedir(directory);
-		if(logging){
-			fprintf(logstream,"Diretoria encontrada!!: %s\n",p.pagepath);
-		}
-		return 1;
-
-	}
-	errno=0;
-	if((p.pagefd=open(p.pagepath,O_RDONLY,0777))<0){
-			if(logging){
-			fprintf(logstream,"Invalid filepath: %s\n%s\n",p.pagepath,strerror(errno));
-			}
-			return -1;
-	}
-	if(logging){
-	fprintf(logstream,"Done!\n");
-	}
-		lseek(p.pagefd,0,SEEK_END);
-		p.data_size=lseek(p.pagefd,0,SEEK_CUR)+1;
-		lseek(p.pagefd,0,SEEK_SET);
-		
-		char headerBuff[PATHSIZE]={0};
-		//p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
-		p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
-		
-		p.header_size=strlen(headerBuff);
-		
-			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
-				if(logging){
-				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
-				}
-			}
-		sendnormalfd(sd,clientIndex,p.pagefd);
-		
-		close(p.pagefd);
-		return 0;
-}
-
 static void initializeClients(void){
 
 FD_ZERO(&readfds);
@@ -247,6 +150,8 @@ static void handleIncommingConnections(void){
         	}
 		setNonBlocking(client_socket);
 		setLinger(client_socket,0,0);
+		int sz = 20000000;
+		setsockopt(client_socket, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz)); 
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                 if(logging){
 		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
@@ -269,7 +174,7 @@ static void handleIncommingConnections(void){
 }
 static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 
-	return testOpenResourcefd(sd,clientIndex,buff,mimetype);
+	return sendResource(sd,clientIndex,buff,mimetype,USEFD);
 }
 
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){
@@ -350,14 +255,14 @@ static void handleCurrentConnections(int i,int sd){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
 				http_request* req=spawnHTTPRequest(peerbuff);
 				if(logging){
-				fprintf(logstream,"Recebemos request!!!: \n");
-				print_http_req(logstream,*req);
+				fprintf(logstream,"Recebemos request!!!: %s\n",peerbuffcopy);
+				//print_http_req(logstream,*req);
 				}
 				if(!strlen(req->data)&&(req->header->content_length>0)){
 				free(req->data);
 				req->data=malloc(req->header->content_length+1);
 				memset(req->data,0,req->header->content_length+1);
-				if(timedreadall(sd,req->data,req->header->content_length)!=-2){
+				if(READ_FUNC_TO_USE(sd,req->data,req->header->content_length)!=-2){
 
 				
 

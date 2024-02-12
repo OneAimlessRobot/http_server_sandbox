@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -14,7 +15,8 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
-#define SEND_FUNC_TO_USE write
+#define SEND_FUNC_TO_USE sendsome_chat_gpt
+//#define SEND_FUNC_TO_USE write
 int readsome(int sd,char buff[],u_int64_t size){
                 int iResult;
                 struct timeval tv;
@@ -65,53 +67,55 @@ int sendsome(int sd,char buff[],u_int64_t size){
 		return -1;
 		}
 }
-
-int timedreadall(int sd,char* buff,int64_t size){
-int counter=0;
-int iResult=0;
-	while(counter<=MAXTRIES){
-		counter++;
-		int iResult;
-                fd_set rfds;
-                FD_ZERO(&rfds);
-                FD_SET(sd,&rfds);
-                struct timeval tv;
-                tv.tv_sec=BIGTIMEOUTSECS;
-                tv.tv_usec=BIGTIMEOUTUSECS;
-                iResult=select(sd+1,&rfds,(fd_set*)0,(fd_set*)0,&tv);
- 	        if(iResult>0){
-
-                return readall(sd,buff,size);
-                }
-		else if(iResult<0){
-
-		break;
-		}
-		if(logging){
-		fprintf(logstream,"A tentar read! Tentativa %d de %d falhou!\n",counter,MAXTRIES);
-		}
-	}
-		
-		if(!iResult){
-		if(logging){
-		fprintf(logstream,"socket deu timeout!!\navisando server para dropar cliente!\n");
-		}
-		return -2;
-		}
-		else{
-		if(logging){
-		fprintf(logstream,"socket deu erro!!\navisando server para dropar cliente!:\n%s\n",strerror(errno));
-		}
-		}
-		return -2;
+int readsome_chat_gpt(int sd, char *buff, size_t size) {
+    int iResult;
+    struct timeval tv;
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(sd, &rfds);
+    tv.tv_sec = SMALLTIMEOUTSECS;
+    tv.tv_usec = SMALLTIMEOUTUSECS;
+    iResult = select(sd + 1, NULL, &rfds, NULL, &tv);
+    if (iResult > 0) {
+        return recv(sd, buff, size, 0);
+    } else if (!iResult) {
+        return -2; // Timeout
+    } else {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return -1; // Socket would block
+        } else {
+            return -1; // Other error
+        }
+    }
 }
+int sendsome_chat_gpt(int sd, char *buff, size_t size) {
+    int iResult;
+    struct timeval tv;
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(sd, &rfds);
+    tv.tv_sec = SMALLTIMEOUTSECS;
+    tv.tv_usec = SMALLTIMEOUTUSECS;
+    iResult = select(sd + 1, NULL, &rfds, NULL, &tv);
+    if (iResult > 0) {
+        return send(sd, buff, size, 0);
+    } else if (!iResult) {
+        return -2; // Timeout
+    } else {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return -1; // Socket would block
+        } else {
+            return -1; // Other error
+        }
+    }
+}
+
+
 int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
-	char* ptr= buff;
-	char bufftmp[READBUFFSIZE+1]={0};
 while(total<size){
-        len=readsome(sd,bufftmp,READBUFFSIZE);
+        len=readsome_chat_gpt(sd,buff+total,total-size);
 	if(!len||len==-2){
 		//fprintf(logstream,"Timeout no reading!!!!: %s\nsocket %d\n",strerror(errno),sd);
                 break;
@@ -135,10 +139,7 @@ while(total<size){
 	}
 	}
 	else{
-	printf("Li %ld bytes!!!!\n",len);
-	ptr+=snprintf(ptr,READBUFFSIZE,"%s",bufftmp);
-	memset(bufftmp,0,READBUFFSIZE+1);
-        
+	printf("Li %ld bytes!!!!\n",len); 
 	total+=len;
 	}
 	if(total==size){
@@ -176,78 +177,44 @@ while(total<size){
 
 }
 
-int sendallchunked(int sd,int clientIndex,FILE* stream){
+int send_in_chunks_chunked_chat_gpt(int sd, int clientIndex, int fd) {
+    char chunk[BUFFSIZE];
+    size_t numread;
+    int ret;
 
-char buff[BUFFSIZE];
-char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
-int numread;
-
-while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
-    int truesize = snprintf(chunkbuff, sizeof(chunkbuff), "%x\r\n", numread);
-    memcpy(chunkbuff + truesize, buff, numread);
-    memcpy(chunkbuff + truesize + numread, "\r\n", 2);
-
-    int totalsent = 0;
-    while (totalsent < truesize + numread + 2) {
-        int sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
-        if(sent<0){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if(logging){
-		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-		//continue;
-	
+    while ((numread = read(fd,chunk,BUFFSIZE)) > 0) {
+        // Send chunk size in hex
+        char chunk_size_str[20];
+        sprintf(chunk_size_str, "%zx\r\n", numread);
+        ret = sendsome_chat_gpt(sd, chunk_size_str, strlen(chunk_size_str));
+        if (ret < 0) {
+            fprintf(stderr, "Error sending chunk size: %s\n", strerror(errno));
+            return -1;
         }
 
-        else if(errno == ECONNRESET){
-		if(logging){
-                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
-                }
-		peerToDrop=clientIndex;
-		socketToClose=sd;
-		//raise(SIGINT);
-		return 0;
-		//continue
+        // Send chunk data
+        ret = sendsome_chat_gpt(sd, chunk, numread);
+        if (ret < 0) {
+            fprintf(stderr, "Error sending chunk data: %s\n", strerror(errno));
+            return -1;
         }
-	else{
-		if(logging){
-                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
-                }
-		break;
-		//continue
-	
-	}
-        }
-	else{
-	
-	if(logging){
-	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
-	}
-	totalsent += sent;
-    	}
-	}
-        if(errno){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if(logging){
-		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		//break;
-		continue;
-        }
-	else{
-		if(logging){
-		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-		
-	}
-	}
-}
 
-// Send final zero-sized chunk
-send(sd, "0\r\n\r\n", 5, 0);
-return 0;
+        // Send chunk delimiter
+        ret = sendsome_chat_gpt(sd, "\r\n", 2);
+        if (ret < 0) {
+            fprintf(stderr, "Error sending chunk delimiter: %s\n", strerror(errno));
+            return -1;
+        }
+    }
+
+    // Send final chunk
+    ret = sendsome_chat_gpt(sd, "0\r\n\r\n", 5);
+    if (ret < 0) {
+        fprintf(stderr, "Error sending final chunk: %s\n", strerror(errno));
+        return -1;
+    }
+
+    return 0; // All data sent successfully
 }
 
 int sendallchunkedfd(int sd,int clientIndex,int fd){
@@ -264,9 +231,16 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
         sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
-        if(!sent||sent==-2){
-		fprintf(logstream,"Timeout no reading!!!!:errno: %d %s\nsocket %d\n",errno,strerror(errno),sd);
-                break;
+	if((!sent||sent==-2)&&!errno){
+		int onwrite=1,sendbuff=0;
+		socklen_t optlen=sizeof(sendbuff);
+		ioctl(sd,TIOCOUTQ,&onwrite);
+		getsockopt(sd, SOL_SOCKET, SO_SNDBUF, &sendbuff, &optlen);
+	      	fprintf(logstream,"Timeout no sending!!!!:errno: %d %s\nsocket %d\nmini send de %d bytes!!!\nTemos %d na socket!!!\nSocket tem %d de tamanho!!!!\n",errno,strerror(errno),sd,sent,onwrite,sendbuff);
+        	if(!onwrite){
+			continue;
+		}
+		break;
 	}
 	else if(sent<0){
 	
@@ -289,7 +263,7 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 		return 0;
 		//continue
         }
-	else if(errno){
+	else {
 		if(logging){
                 fprintf(logstream,"Outro erro qualquer!!!!!: %d %s\n",errno,strerror(errno));
                 }
@@ -305,29 +279,6 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 	totalsent += sent;
     	}
 	}
-        if(errno){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if(logging){
-		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		//break;
-		continue;
-        }
-	else{
-		if(logging){
-		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-		
-	}
-	}
-	else if(sent==-2){
-		if(logging){
-		fprintf(logstream,"Exiting due to timeout!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-
-	}
 }
 
 // Send final zero-sized chunk
@@ -335,70 +286,6 @@ send(sd, "0\r\n\r\n", 5, 0);
 return 0;
 }
 
-
-int sendnormal(int sd,int clientIndex,FILE* stream){
-
-char buff[BUFFSIZE];
-int numread;
-
-while ((numread = fread(buff, 1, BUFFSIZE, stream)) > 0) {
-
-int totalsent = 0;
-    while (totalsent < numread) {
-        int sent = SEND_FUNC_TO_USE(sd, buff+totalsent, numread - totalsent);
-        if(sent<0){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if(logging){
-		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-		//continue;
-	
-        }
-
-        else if(errno == ECONNRESET){
-		if(logging){
-                fprintf(logstream,"Conexão largada!!\nSIGPIPE!!!!!: %s\n",strerror(errno));
-                }
-		peerToDrop=clientIndex;
-		socketToClose=sd;
-		//raise(SIGINT);
-		return 0;
-		//continue
-        }
-	else{
-		if(logging){
-                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
-                }
-		break;
-		//continue;
-	
-	}
-        }
-	else{
-	totalsent += sent;
-    	}
-	}
-        if(errno){
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if(logging){
-		fprintf(logstream,"Exiting due to block!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		//break;
-		continue;
-        }
-	else{
-		if(logging){
-		fprintf(logstream,"Exiting due to some other error!!!!: %s\nsocket %d\n",strerror(errno),sd);
-                }
-		break;
-		
-	}
-	}
-}
-send(sd, "\r\n\r\n", 5, 0);
-return 0;
-}
 int sendnormalfd(int sd,int clientIndex,int fd){
 
 char buff[BUFFSIZE];
