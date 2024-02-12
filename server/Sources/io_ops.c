@@ -29,7 +29,16 @@ int readsome(int sd,char buff[],u_int64_t size){
                 return recv(sd,buff,size,0);
 
                 }
-               return -2;
+		else if(!iResult){
+               	return -2;
+		}
+		else{
+		if(logging){
+
+		fprintf(logstream, "SELECT ERROR!!!!!\n");
+		}
+		return -1;
+		}
 }
 
 int sendsome(int sd,char buff[],u_int64_t size){
@@ -45,7 +54,16 @@ int sendsome(int sd,char buff[],u_int64_t size){
 
                 return send(sd,buff,size,0);
                 }
-               return -2;
+		else if(!iResult){
+               	return -2;
+		}
+		else{
+		if(logging){
+
+		fprintf(logstream, "SELECT ERROR!!!!!\n");
+		}
+		return -1;
+		}
 }
 
 int timedreadall(int sd,char* buff,int64_t size){
@@ -91,12 +109,38 @@ int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
 	char* ptr= buff;
-	char bufftmp[BUFFSIZE]={0};
-while((len=read(sd,bufftmp,BUFFSIZE))>0){
-        //printf("Li!!!!\n");
-	ptr+=snprintf(ptr,BUFFSIZE,"%s",bufftmp);
-	memset(bufftmp,0,BUFFSIZE);
-        total+=len;
+	char bufftmp[READBUFFSIZE+1]={0};
+while(total<size){
+        len=readsome(sd,bufftmp,READBUFFSIZE);
+	if(!len||len==-2){
+		//fprintf(logstream,"Timeout no reading!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                break;
+	}
+	else if(len<0){
+	if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if(logging){
+		//fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+		//continue;
+	
+        }
+	else if(errno){
+		if(logging){
+                fprintf(logstream,"Outro erro qualquer!!!!!:%d %s\n",errno,strerror(errno));
+                }
+		break;
+		//continue
+	
+	}
+	}
+	else{
+	printf("Li %ld bytes!!!!\n",len);
+	ptr+=snprintf(ptr,READBUFFSIZE,"%s",bufftmp);
+	memset(bufftmp,0,READBUFFSIZE+1);
+        
+	total+=len;
+	}
 	if(total==size){
 	break;
 	}
@@ -211,7 +255,7 @@ int sendallchunkedfd(int sd,int clientIndex,int fd){
 char buff[BUFFSIZE];
 char chunkbuff[2 * BUFFSIZE + 10];  // Additional space for size header and CRLF
 int numread;
-
+int sent=0;
 while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
     int truesize = snprintf(chunkbuff, sizeof(chunkbuff), "%x\r\n", numread);
     memcpy(chunkbuff + truesize, buff, numread);
@@ -219,8 +263,13 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        int sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
-        if(sent<0){
+        sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
+        if(!sent||sent==-2){
+		fprintf(logstream,"Timeout no reading!!!!:errno: %d %s\nsocket %d\n",errno,strerror(errno),sd);
+                break;
+	}
+	else if(sent<0){
+	
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
 		fprintf(logstream,"Block no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
@@ -240,9 +289,9 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 		return 0;
 		//continue
         }
-	else{
+	else if(errno){
 		if(logging){
-                fprintf(logstream,"Outro erro qualquer!!!!!: %s\n",strerror(errno));
+                fprintf(logstream,"Outro erro qualquer!!!!!: %d %s\n",errno,strerror(errno));
                 }
 		break;
 		//continue;
@@ -271,6 +320,13 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 		break;
 		
 	}
+	}
+	else if(sent==-2){
+		if(logging){
+		fprintf(logstream,"Exiting due to timeout!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		break;
+
 	}
 }
 
@@ -320,9 +376,6 @@ int totalsent = 0;
 	}
         }
 	else{
-	if(logging){
-	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
-	}
 	totalsent += sent;
     	}
 	}
@@ -385,9 +438,6 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 	}
         }
 	else{
-	if(logging){
-	fprintf(logstream,"send de %d bytes feito!!!!!\n",sent);
-	}
 	totalsent += sent;
     	}
 	}

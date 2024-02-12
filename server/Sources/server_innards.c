@@ -111,8 +111,8 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
 	char* ptr= p.pagepath;
-	//p.headerFillFunc=&fillUpChunkedHeader;
-	p.headerFillFunc=&fillUpNormalHeader;
+	p.headerFillFunc=&fillUpChunkedHeader;
+	//p.headerFillFunc=&fillUpNormalHeader;
 	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
 	if(logging){
 	fprintf(logstream,"Fetching %s...\n",p.pagepath);
@@ -141,8 +141,8 @@ static int testOpenResource(int sd,int clientIndex,char* resourceTarget,char* mi
 		fseek(p.pagestream,0,SEEK_SET);
 		
 		char headerBuff[PATHSIZE]={0};
-		//p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
-		p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
+		p.headerFillFunc(headerBuff,chunkedHeader,p.data_size,mimetype);
+		//p.headerFillFunc(headerBuff,normalHeader,p.data_size,mimetype);
 		p.header_size=strlen(headerBuff);
 		
 			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
@@ -269,7 +269,7 @@ static void handleIncommingConnections(void){
 }
 static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
 
-	return testOpenResource(sd,clientIndex,buff,mimetype);
+	return testOpenResourcefd(sd,clientIndex,buff,mimetype);
 }
 
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){
@@ -340,9 +340,7 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 }
 
 static void handleCurrentConnections(int i,int sd){
- 			peerbuff=malloc(PAGE_DATA_SIZE);
- 			peerbuffcopy=malloc(PAGE_DATA_SIZE);
-			memset(peerbuff,0,PAGE_DATA_SIZE);
+ 			memset(peerbuff,0,PAGE_DATA_SIZE);
 			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
 			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
                   	if(errno == ECONNRESET){
@@ -352,7 +350,7 @@ static void handleCurrentConnections(int i,int sd){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
 				http_request* req=spawnHTTPRequest(peerbuff);
 				if(logging){
-				fprintf(logstream,"Recebemos request!!!:\n");
+				fprintf(logstream,"Recebemos request!!!: \n");
 				print_http_req(logstream,*req);
 				}
 				if(!strlen(req->data)&&(req->header->content_length>0)){
@@ -378,9 +376,7 @@ static void handleCurrentConnections(int i,int sd){
 			handleDisconnect(i,sd);
 		
 			}
-			free(peerbuff);
-			free(peerbuffcopy);
-		
+			
 }
 
 
@@ -400,13 +396,17 @@ static void handleActivityInSockets(void){
 
 }
 static void mainLoop(void){
-
+	peerbuff=malloc(PAGE_DATA_SIZE);
+ 	peerbuffcopy=malloc(PAGE_DATA_SIZE);
+			
 	while(1){
 	
 	initializeClients();
 	handleIncommingConnections();
 	handleActivityInSockets();
     }
+	free(peerbuff);
+	free(peerbuffcopy);
 
 }
 
