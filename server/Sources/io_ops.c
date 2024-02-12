@@ -15,7 +15,7 @@
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
-#define SEND_FUNC_TO_USE sendsome_chat_gpt
+#define SEND_FUNC_TO_USE sendsome
 //#define SEND_FUNC_TO_USE write
 int readsome(int sd,char buff[],u_int64_t size){
                 int iResult;
@@ -140,7 +140,7 @@ while(total<size){
 	}
 	}
 	else{
-	printf("Li %ld bytes!!!!\n",len); 
+	//printf("Li %ld bytes!!!!\n",len); 
 	total+=len;
 	}
 	if(total==size){
@@ -231,19 +231,10 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
 
     int totalsent = 0;
     while (totalsent < truesize + numread + 2) {
-        sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
-	if((!sent||sent==-2)&&!errno){
-		int onwrite=1,sendbuff=0;
-		socklen_t optlen=sizeof(sendbuff);
-		ioctl(sd,TIOCOUTQ,&onwrite);
-		getsockopt(sd, SOL_SOCKET, SO_SNDBUF, &sendbuff, &optlen);
-	      	fprintf(logstream,"Timeout no sending!!!!:errno: %d %s\nsocket %d\nmini send de %d bytes!!!\nTemos %d na socket!!!\nSocket tem %d de tamanho!!!!\n",errno,strerror(errno),sd,sent,onwrite,sendbuff);
-        	if(!onwrite){
-			continue;
-		}
-		break;
-	}
-	else if(sent<0){
+        errno=0;
+	sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
+	
+	if(sent<0){
 	
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if(logging){
@@ -260,7 +251,7 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
                 }
 		peerToDrop=clientIndex;
 		socketToClose=sd;
-		//raise(SIGINT);
+		//raise(SIGPIPE);
 		return 0;
 		//continue
         }

@@ -64,7 +64,7 @@ int sendResource(int sd,int clientIndex,char* resourceTarget,char* mimetype,int 
 			}
 
 	if(usefd){
-		send_in_chunks_chunked_chat_gpt(sd,clientIndex,p.pagefd);
+		sendallchunkedfd(sd,clientIndex,p.pagefd);
 		close(p.pagefd);
 	}
 	return 0;

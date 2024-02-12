@@ -41,9 +41,10 @@ static void handleDisconnect(int i,int sd){
 			fprintf(logstream,"Host disconnected. Cliente numero: %d , ip %s , port %d \n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
                     }
 			//Close the socket and mark as 0 in list for reuse
-                    close( sd );
+                    
+		    close( sd );
                     client_sockets[i] = 0;
-
+			
 
 }
 
@@ -137,7 +138,7 @@ static void handleIncommingConnections(void){
 		
         	}
 		setNonBlocking(client_socket);
-		setLinger(client_socket,0,0);
+		//setLinger(client_socket,0,0);
 		int sz = 20000000;
 		setsockopt(client_socket, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz)); 
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
