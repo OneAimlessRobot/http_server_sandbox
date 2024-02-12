@@ -17,4 +17,6 @@ void* handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]);
 void* handleCustomPostReq(char* nulltermedtarget,char* contents,char targetinout[PATHSIZE]);
 
 char* generateDirListing(char* dir);
+
+void deleteDirListingHTML(void);
 #endif

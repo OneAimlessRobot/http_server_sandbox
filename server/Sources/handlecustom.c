@@ -71,7 +71,7 @@ char* generateDirListing(char* dir){
 		return NULL;
 	}
 	remove(tmpDir);
-	int noRoot=strcmp(currSearchedDir,RESOURCES_PATH);
+	int noRoot=strlen(dir);
 	char* currListing=malloc(BUFFSIZE);
 	memset(currListing,0,BUFFSIZE);
 	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>");
@@ -232,4 +232,11 @@ void* handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]
 
 	}*/
 	return result;
+}
+
+void deleteDirListingHTML(void){
+char buff[PATHSIZE]={0};
+snprintf(buff,PATHSIZE,"%s/resources%s",currDir,tmpTwo);
+remove(buff);
+
 }

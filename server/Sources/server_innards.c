@@ -26,14 +26,6 @@ static char* peerbuffcopy=NULL;
 static char addressContainer[INET_ADDRSTRLEN];
 
 FILE* logstream;
-static void* beepnotify(void* args){
-	
-	char buff[PATHSIZE]={0};
-	snprintf(buff,PATHSIZE,"%s %d %d",CADENCE_BEEPER_PATH,BEEP_TIMES,BEEP_INTERVAL);
-	system(buff);
-	return args;
-
-}
 
 static int isDirectory(const char *path) {
    struct stat statbuf;
@@ -43,12 +35,8 @@ static int isDirectory(const char *path) {
 }
 
 static void handleDisconnect(int i,int sd){
-		if(beeping){
-			pthread_t beeper;
-			pthread_create(&beeper,NULL,&beepnotify,NULL);
-			pthread_detach(beeper);
-		}
-    		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+		
+		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                     if(logging){
 			fprintf(logstream,"Host disconnected. Cliente numero: %d , ip %s , port %d \n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
                     }
@@ -208,9 +196,8 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 				}
 				else if(isDir>0){
 					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
-					remove(DIR_LIST_TMP_FILE_PATH);
+					deleteDirListingHTML();
 				}
-
 			}
 	break;
 	case POST:
@@ -233,7 +220,7 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 				}
 				else if(result>0){
 					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
-					remove(DIR_LIST_TMP_FILE_PATH);
+					deleteDirListingHTML();
 				}
 			}
 	break;
