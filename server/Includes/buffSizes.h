@@ -1,7 +1,7 @@
 #ifndef BUFFSIZES_H
 #define BUFFSIZES_H
 
-#define BUFFSIZE 16000
+#define BUFFSIZE (5*1024)
 #define READBUFFSIZE 100
 #define PATHSIZE 1024
 #define FIELDSIZE 1024

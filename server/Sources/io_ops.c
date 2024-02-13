@@ -232,7 +232,14 @@ while ((numread = read(fd,buff, BUFFSIZE)) > 0) {
     while (totalsent < truesize + numread + 2) {
         errno=0;
 	sent = SEND_FUNC_TO_USE(sd, chunkbuff + totalsent, truesize + numread + 2 - totalsent);
-	
+	if(sent==-2){
+
+		if(logging){
+		fprintf(logstream,"Timeout no sending!!!!: %s\nsocket %d\n",strerror(errno),sd);
+                }
+		
+		continue;
+	}
 	if(sent<0){
 	
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
