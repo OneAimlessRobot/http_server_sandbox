@@ -5,6 +5,7 @@
 #include "../Includes/handlecustom.h"
 #include "../Includes/server_vars.h"
 #include "../Includes/send_resource_func.h"
+#include "../Includes/load_logins.h"
 #include "../Includes/server_innards.h"
 #include <sys/socket.h>
 #include <errno.h>
@@ -13,7 +14,7 @@
 #define READ_FUNC_TO_USE readall
 #define SEND_SOCK_BUFF_SIZE 10000000
 static socklen_t socklenpointer;
-static int server_socket,numOfClients,*client_sockets,max_sd;
+static int server_socket,numOfClients,*client_sockets,max_sd,currNumOfClients;
 
 static struct sockaddr_in server_address, clientAddress;
 
@@ -34,6 +35,34 @@ static int isDirectory(const char *path) {
    return S_ISDIR(statbuf.st_mode);
 }
 
+static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
+
+	return sendResource(sd,clientIndex,buff,mimetype,USEFD);
+}
+int* getClientArrCopy(void){
+	
+	int* result= malloc(numOfClients*sizeof(int));
+	for(int i=0;i<numOfClients;i++){
+		
+		result[i]=client_sockets[i];
+		
+	}
+	return result;
+
+}
+
+int getCurrNumOfClients(void){
+	
+	return currNumOfClients;
+
+
+}
+int getMaxNumOfClients(void){
+	
+	return numOfClients;
+
+
+}
 static void handleDisconnect(int i,int sd){
 		
 		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
@@ -44,7 +73,7 @@ static void handleDisconnect(int i,int sd){
                     
 		    close( sd );
                     client_sockets[i] = 0;
-			
+		    currNumOfClients--;
 
 }
 
@@ -86,6 +115,28 @@ static void sigint_handler(int signal){
 	fprintf(logstream,"Adeus! Server out...\n");
 	}
 	fclose(logstream);
+	if(peerbuff){
+
+	free(peerbuff);
+
+	}
+	if(peerbuffcopy){
+	
+	free(peerbuffcopy);
+
+	}
+	if(currLogins){
+	
+	freeLogins(&currLogins);
+
+
+	}
+	if(currAdmins){
+	
+	freeLogins(&currAdmins);
+
+
+	}
 	printf("Adeus! Server out...\n");
 	exit(-1+signal);
 
@@ -118,6 +169,7 @@ FD_ZERO(&readfds);
         }
 
 }
+
 static void handleIncommingConnections(void){
 
 	int client_socket;
@@ -139,14 +191,13 @@ static void handleIncommingConnections(void){
         	}
 		setNonBlocking(client_socket);
 		//setLinger(client_socket,0,0);
-		int sz = 20000000;
-		setsockopt(client_socket, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz)); 
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                 if(logging){
 		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
         	}
-			//add new socket to array of sockets
-            for (int i = 0; i < numOfClients; i++)
+		currNumOfClients++;
+	    int i=0;		//add new socket to array of sockets
+            for (; i < numOfClients; i++)
             {
                 //if position is empty
                 if( !client_sockets[i] )
@@ -158,19 +209,16 @@ static void handleIncommingConnections(void){
 		    break;
                 }
             }
+
+				
 }
 
 }
-static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
-
-	return sendResource(sd,clientIndex,buff,mimetype,USEFD);
-}
-
 static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 	http_header header=*(req.header);
 	if(!strcmp(header.target,"/")){
 
-		strcpy(header.target,"");
+		strcpy(header.target,defaultLoginTarget);
 	}
 	if(logging){
 		fprintf(logstream,"%s\n",header.target);
@@ -235,7 +283,7 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 static void handleCurrentConnections(int i,int sd){
  			memset(peerbuff,0,PAGE_DATA_SIZE);
 			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
-			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE)!=-2){
+			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE-1)!=-2){
                   	if(errno == ECONNRESET){
 				handleDisconnect(i,sd);
 			}
@@ -356,7 +404,9 @@ void initializeServer(int max_quota,int logs){
 	fprintf(logstream,"Server spawnado @ %s\n",inet_ntoa(server_address.sin_addr));
 	}
 	socklenpointer=sizeof(clientAddress);
-
+	loadLogins();
+	loadAdmins();
 	mainLoop();
+	freeLogins(&currLogins);
 }
 

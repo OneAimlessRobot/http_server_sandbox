@@ -3,10 +3,17 @@
 #include <errno.h>
 #include "../Includes/buffSizes.h"
 #include "../Includes/server_vars.h"
+#include "../Includes/server_innards.h"
 #include "../Includes/auxFuncs.h"
 #include "../Includes/resource_consts.h"
 #include "../Includes/io_ops.h"
+#include "../Includes/load_logins.h"
 #include "../Includes/handlecustom.h"
+static struct sockaddr_in  clientAddress;
+
+static socklen_t socklenpointer;
+
+static char addressContainer[INET_ADDRSTRLEN];
 
 typedef struct pipestruct{
 
@@ -15,20 +22,16 @@ typedef struct pipestruct{
 }pipestruct;
 
 char* tmpOne="/.tmp.html",* tmpTwo="/.tmp1.html";
+char* tmpClients="/.tmpC.html";;
 static int currvent=0;
 char* customgetreqs[]={WRITE_VENT_REQ,SEE_FILES_REQ,NULL};
 
-char* custompostreqs[]={WRITE_VENT_REQ,NULL};
+char* custompostreqs[]={WRITE_VENT_REQ,SIGN_IN_REQ,SEE_CLIENTS_REQ,NULL};
 
 
 char* tmpDir=NULL;
 char* tmpDir2=NULL;
 char* currSearchedDir=NULL;
-static pipestruct* redirectFd1ToFd1(int fd1,int fd2){
-	dup2(fd1,fd2);
-
-	return NULL;
-}
 
 static void generateDirListingPrimitive(char* path){
 	tmpDir=malloc(PATHSIZE);
@@ -37,12 +40,12 @@ static void generateDirListingPrimitive(char* path){
 	memset(tmpDir2,0,PATHSIZE);
 	currSearchedDir=malloc(PATHSIZE);
 	memset(currSearchedDir,0,PATHSIZE);
-	snprintf(tmpDir,PATHSIZE,"%s/resources%s",currDir,tmpOne);
-	snprintf(tmpDir2,PATHSIZE,"%s/resources%s",currDir,tmpTwo);
+	snprintf(tmpDir,PATHSIZE,"%s%s",currDir,tmpOne);
+	snprintf(tmpDir2,PATHSIZE,"%s%s",currDir,tmpTwo);
 	int outfd= open(tmpDir,O_TRUNC|O_WRONLY|O_CREAT,0777);
 	char* cmd= malloc(PATHSIZE);
 	memset(cmd,0,PATHSIZE);
-	snprintf(currSearchedDir,PATHSIZE,"%s/resources%s",currDir,path);
+	snprintf(currSearchedDir,PATHSIZE,"%s%s",currDir,path);
 	snprintf(cmd,PATHSIZE,"ls -1 %s > %s",currSearchedDir,tmpDir);
 	system(cmd);
 	free(cmd);
@@ -71,7 +74,12 @@ char* generateDirListing(char* dir){
 		return NULL;
 	}
 	remove(tmpDir);
-	int noRoot=strlen(dir);
+	int pathsize=strlen(dir);
+	if(pathsize&&!strcmp(dir +pathsize-1,"/")){
+
+		dir[pathsize-1]=0;
+	}
+	int noRoot=strcmp(dir,"/resources");
 	char* currListing=malloc(BUFFSIZE);
 	memset(currListing,0,BUFFSIZE);
 	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>");
@@ -81,7 +89,7 @@ char* generateDirListing(char* dir){
 	}
 	else{
 		dprintf(fd,"\n<br>\n<h2>INDEX OF: %s</h2><br>\n<br>\n",dir);
-		dprintf(fd,"\n<br>\n<a href='..'>Prev</a><br><br><br>\n");
+		dprintf(fd,"\n<br>\n<a href='%s/..'>Prev</a><br><br><br>\n",dir);
 	
 	}
 	while(fgets(currListing,BUFFSIZE,fstream)){
@@ -98,6 +106,37 @@ char* generateDirListing(char* dir){
 	free(tmpDir2);
 	free(currSearchedDir);
 	return tmpTwo;
+
+}
+
+static void generateClientListing(char targetinout[PATHSIZE]){
+	char path[PATHSIZE]={0};
+	snprintf(path,PATHSIZE,"%s/resources%s",currDir,tmpClients);
+	int fd=	open(path,O_TRUNC|O_WRONLY|O_CREAT,0777);
+	int* clients=getClientArrCopy();
+	int maxQuota=getMaxNumOfClients();
+	int currQuota=getCurrNumOfClients();
+	
+	
+	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>\n");
+	dprintf(fd,"<br>\n<a href='%s'>Go back</a>\n<br>\n",defaultTarget);
+	dprintf(fd,"<br>\n<form id='submitbutton' method='POST' action='/seeclients'>\n<input type='submit' name='button' value='REFRESH'>\n</form>\n<br>\n");
+	dprintf(fd,"\n<br>\n<h1>Ocupacao: %d/%d</h1>\n<br>\n<br>\n<br>" ,currQuota,maxQuota);
+  	
+	for(int i=0;i<maxQuota;i++){
+	if(clients[i]){
+	getpeername(clients[i] , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+        dprintf(fd,"\n<p>Cliente numero: %d , ip %s , port %d</p>\n<p>\n<br>\n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+	}
+	else{
+	dprintf(fd,"\n<p>Posicao %d desocupada</p>\n<br>\n" ,i);
+	}
+	}
+	dprintf(fd,"<br>\n<");
+	dprintf(fd,"</body>\n</html>\n");
+	close(fd);
+	free(clients);
+	memcpy(targetinout,tmpClients,strlen(tmpClients));
 
 }
 
@@ -130,6 +169,7 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	fclose(stream);
 	currvent++;
 }
+
 static void handleVentReqFd(char* fieldmess,char targetinout[PATHSIZE]){
 	char* pathbuff=malloc(PATHSIZE);
 	memset(pathbuff,0,PATHSIZE);
@@ -160,6 +200,41 @@ static void handleVentReqFd(char* fieldmess,char targetinout[PATHSIZE]){
 	currvent++;
 	}
 
+static void handleLogin(char* fieldmess,char targetinout[PATHSIZE]){
+	char* argv2[ARGVMAX]={0};
+	int size=makeargvdelim(fieldmess,"&",argv2,ARGVMAX);
+	
+		char* username[2]={0};
+		splitString(argv2[0],"=",username);
+		char* password[2]={0};
+		char* correctPassword;
+		splitString(argv2[1],"=",password);
+		printf("Given Username: %s Password: %s\n...",username[1],password[1]);
+			if(strcmp((correctPassword=find_login_pw_in_login_arr(username[1],currLogins)),"NO_SUCH_LOGIN")){
+				printf("Found username!!!!\nThe password given is %s and the correct one is %s\n",password[1],correctPassword);
+			
+				if(!memcmp(correctPassword,password[1],strlen(password[1]))){
+					printf("Correct password!!!!\n");
+					memcpy(targetinout,defaultTarget,strlen(defaultTarget));
+					return;
+				}
+				
+			}
+		printf("Given Username: %s Password: %s\n...",username[1],password[1]);
+			if(strcmp((correctPassword=find_login_pw_in_login_arr(username[1],currAdmins)),"NO_SUCH_LOGIN")){
+				printf("Found username!!!!\nThe password given is %s and the correct one is %s\n",password[1],correctPassword);
+			
+				if(!memcmp(correctPassword,password[1],strlen(password[1]))){
+					printf("Correct password!!!!\n");
+					memcpy(targetinout,defaultTargetAdmin,strlen(defaultTargetAdmin));
+					return;
+				}
+				
+			}
+	
+	memcpy(targetinout,incorrectLoginTarget,strlen(incorrectLoginTarget));
+}
+
 int isCustomGetReq(char* nulltermedtarget){
 	int result=0;
 	char* targetcopy= strdup(nulltermedtarget);
@@ -179,7 +254,7 @@ int isCustomPostReq(char* nulltermedtarget){
 
 
 
-void* handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
+void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 	void* result=NULL;
 	char* targetcopy= strdup(customRequest);
 	char* argv2[2];
@@ -188,10 +263,10 @@ void* handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 	if(!strcmp(argv2[0],WRITE_VENT_REQ)){
 		handleVentReqFd(argv2[1],targetinout);
 	}
-	/*else if(!strcmp(argv2[0],SEE_FILES_REQ)){
-		generateDirListing("/resources");
-		result=tmpTwo;
-	}*/
+	else if(!strcmp(argv2[0],SEE_CLIENTS_REQ)){
+		generateClientListing(targetinout);
+
+	}
 	/*
 	else if(!strcmp(nulltermedtarget,writeventreq)){
 
@@ -206,14 +281,21 @@ void* handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 
 	}*/
 	free(targetcopy);
-	return result;
 	
 }
-void* handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]){
+void handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]){
 	void* result=NULL;
 	if(!strcmp(target,WRITE_VENT_REQ)){
 		handleVentReq(contents,targetinout);
 		
+	}
+	else if(!strcmp(target,SIGN_IN_REQ)){
+		handleLogin(contents,targetinout);
+		
+	}
+	else if(!strcmp(target,SEE_CLIENTS_REQ)){
+		generateClientListing(targetinout);
+
 	}
 	/*else if(!strcmp(nulltermedtarget,writeventreq)){
 
@@ -231,12 +313,17 @@ void* handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]
 
 
 	}*/
-	return result;
 }
 
 void deleteDirListingHTML(void){
 char buff[PATHSIZE]={0};
 snprintf(buff,PATHSIZE,"%s/resources%s",currDir,tmpTwo);
+remove(buff);
+
+}
+void deleteClientListingHTML(void){
+char buff[PATHSIZE]={0};
+snprintf(buff,PATHSIZE,"%s%s",currDir,tmpClients);
 remove(buff);
 
 }

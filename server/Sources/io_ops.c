@@ -116,7 +116,7 @@ int readall(int sd,char* buff,int64_t size){
         int64_t len=0,
 		 total=0;
 while(total<size){
-        len=readsome(sd,buff+total,total-size);
+        len=readsome(sd,buff+total,size-total);
 	if(!len||len==-2){
 		//fprintf(logstream,"Timeout no reading!!!!: %s\nsocket %d\n",strerror(errno),sd);
                 break;

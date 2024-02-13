@@ -19,7 +19,7 @@ int sendResource(int sd,int clientIndex,char* resourceTarget,char* mimetype,int 
 	char* ptr= p.pagepath;
 	p.headerFillFunc=&fillUpChunkedHeader;
 	//p.headerFillFunc=&fillUpNormalHeader;
-	ptr+=snprintf(ptr,PATHSIZE,"%s/resources%s",currDir,resourceTarget);
+	ptr+=snprintf(ptr,PATHSIZE,"%s%s",currDir,resourceTarget);
 	
 	DIR* directory=opendir(p.pagepath);
 	if(directory){

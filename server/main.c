@@ -2,6 +2,7 @@
 #include "Includes/auxFuncs.h"
 #include "Includes/handlecustom.h"
 #include "Includes/server_innards.h"
+#include "Includes/load_logins.h"
 
 int main(int argc, char ** argv){
 
@@ -20,6 +21,7 @@ int main(int argc, char ** argv){
 	}
 
 	//generateDirListing(argv[1]);
+		//getcwd(currDir,PATHSIZE);
 	initializeServer(nclients,atoi(argv[2]));
 	return 0;
 }
