@@ -111,7 +111,7 @@ char* generateDirListing(char* dir){
 
 static void generateClientListing(char targetinout[PATHSIZE]){
 	char path[PATHSIZE]={0};
-	snprintf(path,PATHSIZE,"%s/resources%s",currDir,tmpClients);
+	snprintf(path,PATHSIZE,"%s%s",currDir,tmpClients);
 	int fd=	open(path,O_TRUNC|O_WRONLY|O_CREAT,0777);
 	int* clients=getClientArrCopy();
 	int maxQuota=getMaxNumOfClients();
@@ -119,7 +119,7 @@ static void generateClientListing(char targetinout[PATHSIZE]){
 	
 	
 	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>\n");
-	dprintf(fd,"<br>\n<a href='%s'>Go back</a>\n<br>\n",defaultTarget);
+	dprintf(fd,"<br>\n<a href='%s'>Go back</a>\n<br>\n",defaultTargetAdmin);
 	dprintf(fd,"<br>\n<form id='submitbutton' method='POST' action='/seeclients'>\n<input type='submit' name='button' value='REFRESH'>\n</form>\n<br>\n");
 	dprintf(fd,"\n<br>\n<h1>Ocupacao: %d/%d</h1>\n<br>\n<br>\n<br>" ,currQuota,maxQuota);
   	

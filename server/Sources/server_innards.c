@@ -63,18 +63,23 @@ int getMaxNumOfClients(void){
 
 
 }
-static void handleDisconnect(int i,int sd){
-		
-		getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+static void dropConnection(int sd){
+getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                     if(logging){
-			fprintf(logstream,"Host disconnected. Cliente numero: %d , ip %s , port %d \n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+			fprintf(logstream,"Host disconnected. Cliente com ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+                   
                     }
-			//Close the socket and mark as 0 in list for reuse
-                    
-		    close( sd );
-                    client_sockets[i] = 0;
-		    currNumOfClients--;
+                        //Close the socket and mark as 0 in lis>
 
+                    close( sd );
+                    currNumOfClients--;
+
+}
+static void handleDisconnect(int i,int sd){
+		dropConnection(sd);
+		//Close the socket and mark as 0 in list for reuse
+               
+                    client_sockets[i] = 0;
 }
 
 static void setLinger(int socket,int onoff,int time){
@@ -189,13 +194,17 @@ static void handleIncommingConnections(void){
 		raise(SIGINT);
 		
         	}
+		currNumOfClients++;
+		if(currNumOfClients==numOfClients){
+		dropConnection(client_socket);
+		
+		}
 		setNonBlocking(client_socket);
 		//setLinger(client_socket,0,0);
 		getpeername(client_socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
                 if(logging){
 		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
         	}
-		currNumOfClients++;
 	    int i=0;		//add new socket to array of sockets
             for (; i < numOfClients; i++)
             {
@@ -363,6 +372,7 @@ void initializeServer(int max_quota,int logs){
 	
 	logging=logs;
 	beeping=0;
+	currNumOfClients=0;
 	numOfClients=max_quota;
 	client_sockets=malloc(sizeof(int)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
