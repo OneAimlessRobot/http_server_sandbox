@@ -38,8 +38,8 @@ void loadAdmins(void)
 {
 	int numOfLogins=0;
 	FILE* loginStream;
-	char path[PATHSIZE]={0};
-	snprintf(path,PATHSIZE,"%s%s",currDir,ADMINS_DIR);
+	char path[PATHSIZE*2]={0};
+	snprintf(path,PATHSIZE*2,"%s%s",currDir,ADMINS_DIR);
 	if(!(loginStream=fopen(path,"r"))){
 		
 		if(logging){
@@ -90,8 +90,8 @@ void loadLogins(void)
 {
 	int numOfLogins=0;
 	FILE* loginStream;
-	char path[PATHSIZE]={0};
-	snprintf(path,PATHSIZE,"%s%s",currDir,LOGINS_DIR);
+	char path[PATHSIZE*2]={0};
+	snprintf(path,PATHSIZE*2,"%s%s",currDir,LOGINS_DIR);
 	if(!(loginStream=fopen(path,"r"))){
 		
 		if(logging){

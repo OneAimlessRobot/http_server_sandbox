@@ -23,7 +23,6 @@ const char* clientHTMLEntryStyle="<style>\n"
 				"\n"
 				"}\n"
 				"</style>\n";
-static struct sockaddr_in  clientAddress;
 
 static socklen_t socklenpointer;
 
@@ -34,7 +33,7 @@ static int currvent=0;
 
 char* customgetreqs[]={WRITE_VENT_REQ,SEE_FILES_REQ,SIGN_IN_REQ,NULL};
 
-char* custompostreqs[]={WRITE_VENT_REQ,SIGN_IN_REQ,SEE_CLIENTS_REQ,SIGN_OUT_REQ,NULL};
+char* custompostreqs[]={WRITE_VENT_REQ,SIGN_IN_REQ,SEE_CLIENTS_REQ,SIGN_OUT_REQ,KICK_CLIENT_REQ,NULL};
 
 
 char* tmpDir=NULL;
@@ -118,11 +117,13 @@ char* generateDirListing(char* dir){
 }
 static void printClientHTMLEntry(int id,client* c,int fd){
 
-	getpeername(c->socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-        dprintf(fd,"\n<p>Cliente numero: %d , ip %s , port %d\n" ,id,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+	getpeername(c->socket , (struct sockaddr*)&c->client_addr , (socklen_t*)&socklenpointer);
+        dprintf(fd,"\n<p>Cliente numero: %d , ip %s , port %d\n" ,id,inet_ntoa(c->client_addr.sin_addr) , ntohs(c->client_addr.sin_port));
 	dprintf(fd,"Tamanho de socket: recv %d; send %d;</p>\n" ,getSocketRecvBuffSize(c->socket) , getSocketSendBuffSize(c->socket));
 	dprintf(fd,"\n<p> Username: %s</p>\n" ,c->username);
 	dprintf(fd,"\n<p> Curr session time (secs): %lf</p>\n" ,(c->running_time)/1000000);
+	dprintf(fd,"\n<p> Logged in?: %d</p>\n" ,c->logged_in);
+	dprintf(fd,"\n<p> Socket no: %d</p>\n" ,c->socket);
 	if(c->isAdmin){
 		
 		dprintf(fd,"\n<p class='ADMIN'>ADMIN</p>\n");
@@ -135,13 +136,13 @@ static void generateClientListing(char targetinout[PATHSIZE]){
 	char path[PATHSIZE]={0};
 	snprintf(path,PATHSIZE,"%s%s",currDir,tmpClients);
 	int fd=	open(path,O_TRUNC|O_WRONLY|O_CREAT,0777);
-	client* clients=getClientArrCopy();
+	client* clients=getFullClientArrCopy();
 	int maxQuota=getMaxNumOfClients();
 	int currQuota=getCurrNumOfClients();
 	
 	
 	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n");
-	dprintf(fd,clientHTMLEntryStyle);
+	dprintf(fd,"%s",clientHTMLEntryStyle);
 	dprintf(fd,"\n<base href=''>\n</head>\n<body>\n");
 	dprintf(fd,"<br>\n<a href='%s'>Go back</a>\n<br>\n",defaultTargetAdmin);
 	dprintf(fd,"<br>\n<form id='submitbutton' method='POST' action='/seeclients'>\n<input type='submit' name='button' value='REFRESH'>\n</form>\n<br>\n");
@@ -164,10 +165,10 @@ static void generateClientListing(char targetinout[PATHSIZE]){
 }
 
 static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
-	char* pathbuff=malloc(PATHSIZE);
-	memset(pathbuff,0,PATHSIZE);
+	char* pathbuff=malloc(PATHSIZE*2);
+	memset(pathbuff,0,PATHSIZE*2);
 	char* argv2[ARGVMAX]={0};
-	snprintf(pathbuff,PATHSIZE,"%s/resources/vents/ventNumber%d",currDir,currvent);
+	snprintf(pathbuff,PATHSIZE*2,"%s/resources/vents/ventNumber%d",currDir,currvent);
 	FILE* stream=NULL;
 	if(!(stream=fopen(pathbuff,"wb+"))){
 
@@ -193,36 +194,6 @@ static void handleVentReq(char* fieldmess,char targetinout[PATHSIZE]){
 	currvent++;
 }
 
-static void handleVentReqFd(char* fieldmess,char targetinout[PATHSIZE]){
-	char* pathbuff=malloc(PATHSIZE);
-	memset(pathbuff,0,PATHSIZE);
-	char* argv2[ARGVMAX]={0};
-	snprintf(pathbuff,PATHSIZE,"%s/resources/vents/ventNumber%d",currDir,currvent);
-	int stream;
-	if((stream=open(pathbuff,O_CREAT|O_TRUNC|O_WRONLY,0777))<0){
-
-		fprintf(logstream,"ERRO A ABRIR VENT!!!!!\npath: %s\nErro: %d %s\n",pathbuff,errno,strerror(errno));
-		return;
-	}
-	int size=makeargvdelim(fieldmess,"&",argv2,ARGVMAX);
-	for(int i=0;i<size;i++){
-		char* pair[2]={0};
-		splitString(argv2[i],"=",pair);
-		if(!strcmp(pair[0],"venttitle")||!strcmp(pair[0],"ventcontent")){
-		replaceStringCharacter(pair[1],'+',' ');
-		write(stream,pair[0],strlen(pair[0]));
-		write(stream,": ",2);
-		write(stream,pair[1],strlen(pair[1]));
-		write(stream,"\n",1);
-		}
-		
-	}
-	free(pathbuff);
-	memcpy(targetinout,testScriptTarget,strlen(testScriptTarget));
-	close(stream);
-	currvent++;
-	}
-
 int isCustomGetReq(char* nulltermedtarget){
 	int result=0;
 	char* targetcopy= strdup(nulltermedtarget);
@@ -231,7 +202,7 @@ int isCustomGetReq(char* nulltermedtarget){
 	splitString(targetcopy,"?",argv2);
 	
 	result=(findInStringArr(customgetreqs,argv2[0])>=0);
-	printf("Sera que %s e um get req custom? A resposta a isso e %d\n",argv2[0],result);
+	//printf("Sera que %s e um get req custom? A resposta a isso e %d\n",argv2[0],result);
 	free(targetcopy);
 	return result;
 }
@@ -242,10 +213,28 @@ int isCustomPostReq(char* nulltermedtarget){
 	return result;
 }
 
+static void kickClientHandler(char* contents,char targetinout[PATHSIZE]){
 
+char* argv2[ARGVMAX]={0};
+makeargvdelim(contents,"&",argv2,ARGVMAX);
+char* pair[2]={0};
+splitString(argv2[0],"=",pair);
+	fprintf(logstream,"Adeus |%s|!\n",pair[1]);
+	
+if(kickClient(pair[1])){
+	
+	//if(logging){
+
+		fprintf(logstream,"Adeus %s!\n",pair[1]);
+	//}
+
+}
+
+strncpy(targetinout,defaultTargetAdmin,PATHSIZE);
+
+}
 
 void handleCustomGetReq(client* c,char*target,char* body,char targetinout[PATHSIZE]){
-	void* result=NULL;
 	char* targetcopy= strdup(target);
 	char* argv2[2];
 	memset(argv2,0,2*sizeof(char*));
@@ -272,7 +261,6 @@ void handleCustomGetReq(client* c,char*target,char* body,char targetinout[PATHSI
 	
 }
 void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[PATHSIZE]){
-	void* result=NULL;
 	if(!strcmp(target,WRITE_VENT_REQ)){
 		handleVentReq(contents,targetinout);
 		
@@ -287,6 +275,11 @@ void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[P
 	}
 	else if(!strcmp(target,SIGN_OUT_REQ)){
 		handleLogout(c,targetinout);
+
+	}
+	else if(!strcmp(target,KICK_CLIENT_REQ)){
+		
+		kickClientHandler(contents,targetinout);
 
 	}
 	/*else if(!strcmp(nulltermedtarget,writeventreq)){
@@ -308,14 +301,14 @@ void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[P
 }
 
 void deleteDirListingHTML(void){
-char buff[PATHSIZE]={0};
-snprintf(buff,PATHSIZE,"%s/resources%s",currDir,tmpTwo);
+char buff[PATHSIZE*2]={0};
+snprintf(buff,PATHSIZE*2,"%s/resources%s",currDir,tmpTwo);
 remove(buff);
 
 }
 void deleteClientListingHTML(void){
-char buff[PATHSIZE]={0};
-snprintf(buff,PATHSIZE,"%s%s",currDir,tmpClients);
+char buff[PATHSIZE*2]={0};
+snprintf(buff,PATHSIZE*2,"%s%s",currDir,tmpClients);
 remove(buff);
 
 }

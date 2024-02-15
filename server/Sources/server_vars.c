@@ -5,5 +5,5 @@
 int logging,beeping;
 
 client* clientToDrop;
-
+client* clients;
 char currDir[PATHSIZE];

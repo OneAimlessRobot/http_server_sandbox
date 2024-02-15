@@ -258,3 +258,10 @@ void replaceStringCharacter(char *s,char dirty,char wantthisoneinstead){
 
 
 }
+int stringsAreEqual(char* s1,char*s2){
+
+	int lengthIsTheSame= (strlen(s1)==strlen(s2));
+	int stringsAreTheSame=!(strcmp(s1,s2));
+	return lengthIsTheSame && stringsAreTheSame;
+
+}

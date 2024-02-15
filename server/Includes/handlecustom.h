@@ -5,6 +5,7 @@
 #define SEE_FILES_REQ "/seefiles"
 #define SIGN_IN_REQ "/signin"
 #define SIGN_OUT_REQ "/signout"
+#define KICK_CLIENT_REQ "/kickclient"
 #define SEE_CLIENTS_REQ "/seeclients"
 extern char* tmpOne,*tmpTwo;
 extern char* customgetreqs[];

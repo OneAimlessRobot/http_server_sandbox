@@ -21,8 +21,6 @@
 static socklen_t socklenpointer;
 static int server_socket,numOfClients,max_sd,currNumOfClients;
 
-static client*clients;
-
 static struct sockaddr_in server_address, clientAddress;
 
 static fd_set readfds;
@@ -36,18 +34,27 @@ static char addressContainer[INET_ADDRSTRLEN];
 FILE* logstream;
 static double running_time=0.0;
 
-static int isDirectory(const char *path) {
-   struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
-   return S_ISDIR(statbuf.st_mode);
-}
-
 static int sendMediaData(client*c,char* buff,char* mimetype){
 
 	return sendResource(c,buff,mimetype,USEFD);
 }
 client* getClientArrCopy(void){
+	
+	client* result= malloc(currNumOfClients*sizeof(client));
+	for(int i=0;i<currNumOfClients;i++){
+		
+		memset(result[i].username,0,FIELDSIZE);
+		result[i].socket=clients[i].socket;
+		result[i].isAdmin=clients[i].isAdmin;
+		result[i].logged_in=clients[i].logged_in;
+		result[i].running_time=clients[i].running_time;
+		strncpy(result[i].username,clients[i].username,FIELDSIZE);
+	}
+	return result;
+
+}
+
+client* getFullClientArrCopy(void){
 	
 	client* result= malloc(numOfClients*sizeof(client));
 	for(int i=0;i<numOfClients;i++){
@@ -55,6 +62,7 @@ client* getClientArrCopy(void){
 		memset(result[i].username,0,FIELDSIZE);
 		result[i].socket=clients[i].socket;
 		result[i].isAdmin=clients[i].isAdmin;
+		result[i].logged_in=clients[i].logged_in;
 		result[i].running_time=clients[i].running_time;
 		strncpy(result[i].username,clients[i].username,FIELDSIZE);
 	}
@@ -138,7 +146,7 @@ static void sigpipe_handler(int signal){
 	if(logging){
 	fprintf(logstream,"SIGPIPE!!!!!\n");
 	}
-	handleDisconnect(clientToDrop);
+	handleDisconnect(clientToDrop+signal);
 	
 }
 static void initializeClients(void){
@@ -151,6 +159,10 @@ FD_ZERO(&readfds);
         if(clients[i].logged_in){
 	double client_run_time=clients[i].running_time;
         clients[i].running_time=client_run_time+running_time;	
+	if(clients[i].running_time>SESSION_TIME_USECS){
+
+		clients[i].logged_in=0;
+	}
 	}
 	    //socket descriptor  
          int sd = clients[i].socket;   
@@ -207,12 +219,9 @@ static void handleIncommingConnections(void){
 		    clients[i].running_time=0.0;
 		    memset(clients[i].username,0,FIELDSIZE);
 		    memcpy(&clients[i].client_addr,&clientAddress,sizeof(struct sockaddr_in));
-		    memset(clients[i].ip_addr_str,0,FIELDSIZE);
-		    snprintf(clients[i].ip_addr_str,INET_ADDRSTRLEN,"%s",inet_ntoa(clientAddress.sin_addr));
-		    printf("%s\n",clients[i].ip_addr_str);
 		    clients[i].isAdmin=0;
-		    clients[i].logged_in=0;
-                    if(logging){
+	            clients[i].logged_in=0;
+	            if(logging){
 		    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
                     }
 		    break;
@@ -226,7 +235,14 @@ static void handleIncommingConnections(void){
 static void handleCurrentActivity(client*c,http_request req){
 	
 	http_header header=*(req.header);
-	
+	if(!clientIsLoggedIn(c)&&strncmp(header.target,SIGN_IN_REQ,FIELDSIZE)){
+		char buff[PATHSIZE]={0};
+		handleLogout(c,buff);
+		sendMediaData(c,buff,defaultMimetype);
+		//sendMediaData(c,defaultLoginTarget,defaultMimetype);
+		return;
+	}
+	printf("Cliente esta signed in!!!!\n");
 	if(!strcmp(header.target,"/")){
 
 		strcpy(header.target,defaultLoginTarget);
@@ -290,6 +306,7 @@ static void handleCurrentActivity(client*c,http_request req){
 		sendMediaData(c,header.target,defaultMimetype);
 	break;
 	}
+	
 }
 
 static void handleCurrentConnections(client* c){
@@ -303,8 +320,8 @@ static void handleCurrentConnections(client* c){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
 				http_request* req=spawnHTTPRequest(peerbuff);
 				if(logging){
-				fprintf(logstream,"Recebemos request!!!: %s\n",peerbuffcopy);
-				//print_http_req(logstream,*req);
+				fprintf(logstream,"Recebemos request!!!: \n");
+				print_http_req(logstream,*req);
 				}
 				if(!strlen(req->data)&&(req->header->content_length>0)){
 				free(req->data);
@@ -391,9 +408,9 @@ void initializeServer(int max_quota,int logs){
 	for(int i=0;i<numOfClients;i++){
 
 		clients[i].socket=0;
+		clients[i].logged_in=0;
 		clients[i].isAdmin=0;
 		clients[i].running_time=0;
-		memset(clients[i].ip_addr_str,0,FIELDSIZE);
 		memset(clients[i].username,0,FIELDSIZE);
 		memset(&clients[i].client_addr,0,sizeof(struct sockaddr_in));
 		

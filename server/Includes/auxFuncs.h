@@ -30,6 +30,6 @@ int makeargvdelim(char *s,char* delim, char *argv[ARGVMAX], int maxlen);
 int make_str_arr(char *s,char*delim, char *argv[ARGVMAX],int maxlen);
 
 
-
+int stringsAreEqual(char* s1,char* s2);
 
 #endif

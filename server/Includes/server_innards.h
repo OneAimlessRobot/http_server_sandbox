@@ -7,6 +7,8 @@ void initializeServer(int max_quota,int logs);
 
 client* getClientArrCopy(void);
 
+client* getFullClientArrCopy(void);
+
 int getMaxNumOfClients(void);
 
 int getCurrNumOfClients(void);

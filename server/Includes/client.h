@@ -7,7 +7,6 @@ typedef struct client{
 	char username[FIELDSIZE];
 	int isAdmin;
 	int logged_in;
-	char ip_addr_str[FIELDSIZE];
 	struct sockaddr_in client_addr;
 }client;
 
