@@ -1,9 +1,11 @@
 #ifndef SERVER_INNARDS_H
 #define SERVER_INNARDS_H
+#define FIELDLENGTH 1024
+
 
 void initializeServer(int max_quota,int logs);
 
-int* getClientArrCopy(void);
+client* getClientArrCopy(void);
 
 int getMaxNumOfClients(void);
 

@@ -3,10 +3,10 @@
 
 int readall(int sd,char* buff,int64_t size);
 
-int sendallchunkedfd(int sd,int clientIndex,int fd);
+int sendallchunkedfd(client* c,int fd);
 
-int sendnormalfd(int sd,int clientIndex,int fd);
+int sendnormalfd(client* c,int fd);
 
-int send_in_chunks_chunked_chat_gpt(int sd, int clientIndex, int fd);
+int send_in_chunks_chunked_chat_gpt(client*c, int fd);
 
 #endif

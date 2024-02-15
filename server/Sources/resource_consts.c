@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include "../Includes/buffSizes.h"
-#include "../Includes/filePaths.h"
 #include "../Includes/resource_consts.h"
-#include "../Includes/http_response_aux.h"
-
 
 
 char *args[]={"<numero de clientes>","<permites logging? (1 ou 0)>",NULL};
@@ -18,6 +15,8 @@ char* defaultTarget="/resources/index.html";
 char* defaultTargetAdmin="/admin/index_admin.html";
 char* defaultLoginTarget="/index_login.html";
 char* incorrectLoginTarget="/index_login_incorrect.html";
+char* doubleSessionTarget="/index_login_please_logout.html";
+char* timeoutTarget="/index_login_please_timeout.html";
 char* notFoundTarget="/resources/pages/notfound.html";
 char* testScriptTarget="/resources/pages/testscript.html";
 char* defaultVersion="HTTP/1.1";

@@ -3,18 +3,25 @@
 #include "../Includes/resource_consts.h"
 #include "../Includes/http_req_parser.h"
 #include "../Includes/handlecustom.h"
+#include "../Includes/client.h"
 #include "../Includes/server_vars.h"
 #include "../Includes/send_resource_func.h"
 #include "../Includes/load_logins.h"
 #include "../Includes/server_innards.h"
+#include "../Includes/sock_ops.h"
+#include "../Includes/session_ops.h"
+#include <time.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <string.h>
 #include <dirent.h>
 #include <sys/types.h>
 #define READ_FUNC_TO_USE readall
 #define SEND_SOCK_BUFF_SIZE 10000000
 static socklen_t socklenpointer;
-static int server_socket,numOfClients,*client_sockets,max_sd,currNumOfClients;
+static int server_socket,numOfClients,max_sd,currNumOfClients;
+
+static client*clients;
 
 static struct sockaddr_in server_address, clientAddress;
 
@@ -27,6 +34,7 @@ static char* peerbuffcopy=NULL;
 static char addressContainer[INET_ADDRSTRLEN];
 
 FILE* logstream;
+static double running_time=0.0;
 
 static int isDirectory(const char *path) {
    struct stat statbuf;
@@ -35,17 +43,20 @@ static int isDirectory(const char *path) {
    return S_ISDIR(statbuf.st_mode);
 }
 
-static int sendMediaData(int sd,int clientIndex,char* buff,char* mimetype){
+static int sendMediaData(client*c,char* buff,char* mimetype){
 
-	return sendResource(sd,clientIndex,buff,mimetype,USEFD);
+	return sendResource(c,buff,mimetype,USEFD);
 }
-int* getClientArrCopy(void){
+client* getClientArrCopy(void){
 	
-	int* result= malloc(numOfClients*sizeof(int));
+	client* result= malloc(numOfClients*sizeof(client));
 	for(int i=0;i<numOfClients;i++){
 		
-		result[i]=client_sockets[i];
-		
+		memset(result[i].username,0,FIELDSIZE);
+		result[i].socket=clients[i].socket;
+		result[i].isAdmin=clients[i].isAdmin;
+		result[i].running_time=clients[i].running_time;
+		strncpy(result[i].username,clients[i].username,FIELDSIZE);
 	}
 	return result;
 
@@ -71,51 +82,27 @@ getpeername(sd , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer)
                     }
                         //Close the socket and mark as 0 in lis>
 
-                    close( sd );
-                    currNumOfClients--;
-
+                    close(sd);
 }
-static void handleDisconnect(int i,int sd){
-		dropConnection(sd);
+static void handleDisconnect(client* c){
+		dropConnection(c->socket);
 		//Close the socket and mark as 0 in list for reuse
                
-                    client_sockets[i] = 0;
+                    c->socket = 0;
+		    c->running_time=0.0;
+		    memset(c->username,0,FIELDSIZE);
+                    currNumOfClients--;
 }
-
-static void setLinger(int socket,int onoff,int time){
-
-struct linger so_linger;
-so_linger.l_onoff = onoff; // Enable linger option
-so_linger.l_linger = time; // Linger time, set to 0
-
-if (setsockopt(socket, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger)) < 0) {
-    perror("setsockopt");
-    // Handle error
-}
-
-}
-static void setNonBlocking(int socket) {
-    int flags = fcntl(socket, F_GETFL, 0);
-    if (flags == -1) {
-        fprintf(logstream,"erro a atribuir flags a uma socket de cliente: %s\n",strerror(errno));
-        return;
-    }
-
-    if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1) {
-        fprintf(logstream,"erro a atribuir flags a uma socket de cliente: %s\n",strerror(errno));
-    }
-}
-
 static void sigint_handler(int signal){
 	signal=0;
 	close(server_socket);
 	for(int i=0;i<numOfClients;i++){
-	if(client_sockets[i]>0){
-		close(client_sockets[i]);
+	if(clients[i].socket>0){
+		close(clients[i].socket);
 	}
 	}
 	
-	free(client_sockets);
+	free(clients);
 	if(logging){
 	fprintf(logstream,"Adeus! Server out...\n");
 	}
@@ -151,7 +138,7 @@ static void sigpipe_handler(int signal){
 	if(logging){
 	fprintf(logstream,"SIGPIPE!!!!!\n");
 	}
-	handleDisconnect(peerToDrop,socketToClose+signal);
+	handleDisconnect(clientToDrop);
 	
 }
 static void initializeClients(void){
@@ -161,9 +148,13 @@ FD_ZERO(&readfds);
 		max_sd=server_socket;
 	for (int i = 0 ; i < numOfClients ; i++)   
         {   
-            //socket descriptor  
-         int sd = client_sockets[i];   
-                 
+        if(clients[i].logged_in){
+	double client_run_time=clients[i].running_time;
+        clients[i].running_time=client_run_time+running_time;	
+	}
+	    //socket descriptor  
+         int sd = clients[i].socket;   
+        
             //if valid socket descriptor then add to read list  
             if(sd >= 0)   
                 FD_SET( sd , &readfds);   
@@ -205,13 +196,22 @@ static void handleIncommingConnections(void){
                 if(logging){
 		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
         	}
+		setSocketSendBuffSize(client_socket,SEND_SOCK_BUFF_SIZE);
 	    int i=0;		//add new socket to array of sockets
             for (; i < numOfClients; i++)
             {
                 //if position is empty
-                if( !client_sockets[i] )
+                if( !clients[i].socket )
                 {
-                    client_sockets[i] = client_socket;
+                    clients[i].socket = client_socket;
+		    clients[i].running_time=0.0;
+		    memset(clients[i].username,0,FIELDSIZE);
+		    memcpy(&clients[i].client_addr,&clientAddress,sizeof(struct sockaddr_in));
+		    memset(clients[i].ip_addr_str,0,FIELDSIZE);
+		    snprintf(clients[i].ip_addr_str,INET_ADDRSTRLEN,"%s",inet_ntoa(clientAddress.sin_addr));
+		    printf("%s\n",clients[i].ip_addr_str);
+		    clients[i].isAdmin=0;
+		    clients[i].logged_in=0;
                     if(logging){
 		    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
                     }
@@ -223,8 +223,10 @@ static void handleIncommingConnections(void){
 }
 
 }
-static void handleCurrentActivity(int sd,int clientIndex,http_request req){
+static void handleCurrentActivity(client*c,http_request req){
+	
 	http_header header=*(req.header);
+	
 	if(!strcmp(header.target,"/")){
 
 		strcpy(header.target,defaultLoginTarget);
@@ -238,22 +240,23 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 
 				char targetinout[PATHSIZE]={0};
 
-				handleCustomGetReq(header.target,targetinout);
-				int result=sendMediaData(sd,clientIndex,targetinout,defaultMimetype)<0;
+				handleCustomGetReq(c,header.target,req.data,targetinout);
+				int result=sendMediaData(c,targetinout,defaultMimetype);
 				if(result<0){
 
-					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+					sendMediaData(c,notFoundTarget,defaultMimetype);
 
 				}
+				deleteClientListingHTML();
 			}
 			else{
-				int isDir=sendMediaData(sd,clientIndex,header.target,header.mimetype);
+				int isDir=sendMediaData(c,header.target,header.mimetype);
 				if(isDir<0){
-					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+					sendMediaData(c,notFoundTarget,defaultMimetype);
 				
 				}
 				else if(isDir>0){
-					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
+					sendMediaData(c,generateDirListing(header.target),defaultMimetype);
 					deleteDirListingHTML();
 				}
 			}
@@ -262,39 +265,39 @@ static void handleCurrentActivity(int sd,int clientIndex,http_request req){
 			if(isCustomPostReq(header.target)){
 
 				char targetinout[PATHSIZE]={0};
-				handleCustomPostReq(header.target,req.data,targetinout);
-				int result=sendMediaData(sd,clientIndex,targetinout,defaultMimetype);
+				handleCustomPostReq(c,header.target,req.data,targetinout);
+				int result=sendMediaData(c,targetinout,defaultMimetype);
 				if(result<0){
 
-					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+					sendMediaData(c,notFoundTarget,defaultMimetype);
 
-					break;
 				}
+				deleteClientListingHTML();
 			}
 			else{
-				int result=sendMediaData(sd,clientIndex,header.target,header.mimetype);
+				int result=sendMediaData(c,header.target,header.mimetype);
 				if(result<0){
-					sendMediaData(sd,clientIndex,notFoundTarget,defaultMimetype);
+					sendMediaData(c,notFoundTarget,defaultMimetype);
 				}
 				else if(result>0){
-					sendMediaData(sd,clientIndex,generateDirListing(header.target),defaultMimetype);
+					sendMediaData(c,generateDirListing(header.target),defaultMimetype);
 					deleteDirListingHTML();
 				}
 			}
 	break;
 	default:
 		
-		sendMediaData(sd,clientIndex,header.target,defaultMimetype);
+		sendMediaData(c,header.target,defaultMimetype);
 	break;
 	}
 }
 
-static void handleCurrentConnections(int i,int sd){
+static void handleCurrentConnections(client* c){
  			memset(peerbuff,0,PAGE_DATA_SIZE);
 			memset(peerbuffcopy,0,PAGE_DATA_SIZE);
-			if(READ_FUNC_TO_USE(sd,peerbuff,PAGE_DATA_SIZE-1)!=-2){
+			if(READ_FUNC_TO_USE(c->socket,peerbuff,PAGE_DATA_SIZE-1)!=-2){
                   	if(errno == ECONNRESET){
-				handleDisconnect(i,sd);
+				handleDisconnect(c);
 			}
 			else if(strlen(peerbuff)){
 				memcpy(peerbuffcopy,peerbuff,PAGE_DATA_SIZE);
@@ -307,7 +310,7 @@ static void handleCurrentConnections(int i,int sd){
 				free(req->data);
 				req->data=malloc(req->header->content_length+1);
 				memset(req->data,0,req->header->content_length+1);
-				if(READ_FUNC_TO_USE(sd,req->data,req->header->content_length)!=-2){
+				if(READ_FUNC_TO_USE(c->socket,req->data,req->header->content_length)!=-2){
 
 				
 
@@ -315,7 +318,7 @@ static void handleCurrentConnections(int i,int sd){
 				
 				}
 				}
-				handleCurrentActivity(sd,i,*req);
+				handleCurrentActivity(c,*req);
 				free(req->data);
 				free(req->header);
 				free(req);
@@ -323,7 +326,7 @@ static void handleCurrentConnections(int i,int sd){
 			}
 			else{
 			
-			handleDisconnect(i,sd);
+			handleDisconnect(c);
 		
 			}
 			
@@ -334,11 +337,12 @@ static void handleActivityInSockets(void){
 	
 	for (int i = 0; i < numOfClients; i++)
         {
-            int sd = client_sockets[i];
+	int sd = clients[i].socket;
     	
 	if (FD_ISSET(sd, &readfds))
             {
-		handleCurrentConnections(i,sd);
+		
+		handleCurrentConnections(&(clients[i]));
                 
             }
 
@@ -348,13 +352,22 @@ static void handleActivityInSockets(void){
 static void mainLoop(void){
 	peerbuff=malloc(PAGE_DATA_SIZE);
  	peerbuffcopy=malloc(PAGE_DATA_SIZE);
-			
+	
+	
+	struct timeval start, end;
+   	long secs_used;
 	while(1){
+	
+	gettimeofday(&start, NULL);
 	
 	initializeClients();
 	handleIncommingConnections();
 	handleActivityInSockets();
-    }
+	
+    	gettimeofday(&end, NULL);
+	secs_used=(end.tv_sec - start.tv_sec);
+	running_time=(double) (((secs_used*1000000.0) + end.tv_usec) -(double) (start.tv_usec));
+	}
 	free(peerbuff);
 	free(peerbuffcopy);
 
@@ -374,10 +387,16 @@ void initializeServer(int max_quota,int logs){
 	beeping=0;
 	currNumOfClients=0;
 	numOfClients=max_quota;
-	client_sockets=malloc(sizeof(int)*numOfClients);
+	clients=malloc(sizeof(client)*numOfClients);
 	for(int i=0;i<numOfClients;i++){
 
-		client_sockets[i]=0;
+		clients[i].socket=0;
+		clients[i].isAdmin=0;
+		clients[i].running_time=0;
+		memset(clients[i].ip_addr_str,0,FIELDSIZE);
+		memset(clients[i].username,0,FIELDSIZE);
+		memset(&clients[i].client_addr,0,sizeof(struct sockaddr_in));
+		
 	}
 	signal(SIGINT,sigint_handler);
 	

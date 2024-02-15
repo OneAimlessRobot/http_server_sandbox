@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "buffSizes.h"
+#include "client.h"
 #include "server_vars.h"
 #include "filePaths.h"
 #include "auxFuncs.h"

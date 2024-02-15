@@ -12,7 +12,7 @@
 #include <sys/types.h>
 
 
-int sendResource(int sd,int clientIndex,char* resourceTarget,char* mimetype,int usefd){
+int sendResource(client* c,char* resourceTarget,char* mimetype,int usefd){
 
 	page p;
 	memset(p.pagepath,0,PATHSIZE);
@@ -57,14 +57,14 @@ int sendResource(int sd,int clientIndex,char* resourceTarget,char* mimetype,int 
 		
 		p.header_size=strlen(headerBuff);
 		
-			if(send(sd,headerBuff,p.header_size,0)!=(p.header_size)){
+			if(send(c->socket,headerBuff,p.header_size,0)!=(p.header_size)){
 				if(logging){
 				fprintf(logstream,"ERRO NO SEND!!!! O GET TEM UM ARGUMENTO!!!!:\n%s\n",strerror(errno));
 				}
 			}
 
 	if(usefd){
-		sendallchunkedfd(sd,clientIndex,p.pagefd);
+		sendallchunkedfd(c,p.pagefd);
 		close(p.pagefd);
 	}
 	return 0;

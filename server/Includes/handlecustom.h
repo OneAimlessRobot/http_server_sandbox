@@ -4,6 +4,7 @@
 #define WRITE_VENT_REQ "/writevent"
 #define SEE_FILES_REQ "/seefiles"
 #define SIGN_IN_REQ "/signin"
+#define SIGN_OUT_REQ "/signout"
 #define SEE_CLIENTS_REQ "/seeclients"
 extern char* tmpOne,*tmpTwo;
 extern char* customgetreqs[];
@@ -14,9 +15,9 @@ int isCustomGetReq(char* nulltermedtarget);
 
 int isCustomPostReq(char* nulltermedtarget);
 
-void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]);
+void handleCustomGetReq(client*c,char*target,char* body,char targetinout[PATHSIZE]);
 
-void handleCustomPostReq(char* nulltermedtarget,char* contents,char targetinout[PATHSIZE]);
+void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[PATHSIZE]);
 
 char* generateDirListing(char* dir);
 

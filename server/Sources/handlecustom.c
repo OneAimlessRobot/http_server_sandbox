@@ -2,6 +2,7 @@
 #include "../Includes/preprocessor.h"
 #include <errno.h>
 #include "../Includes/buffSizes.h"
+#include "../Includes/client.h"
 #include "../Includes/server_vars.h"
 #include "../Includes/server_innards.h"
 #include "../Includes/auxFuncs.h"
@@ -9,24 +10,31 @@
 #include "../Includes/io_ops.h"
 #include "../Includes/load_logins.h"
 #include "../Includes/handlecustom.h"
+#include "../Includes/sock_ops.h"
+#include "../Includes/session_ops.h"
+
+const char* clientHTMLEntryStyle="<style>\n"
+				"p:{\n"
+				"\n"
+				"font-size: 10px;\n"
+				"}\n"
+				"p.ADMIN:{\n"
+				"color: red;\n"
+				"\n"
+				"}\n"
+				"</style>\n";
 static struct sockaddr_in  clientAddress;
 
 static socklen_t socklenpointer;
 
-static char addressContainer[INET_ADDRSTRLEN];
-
-typedef struct pipestruct{
-
-	int read_end,write_end;
-
-}pipestruct;
 
 char* tmpOne="/.tmp.html",* tmpTwo="/.tmp1.html";
 char* tmpClients="/.tmpC.html";;
 static int currvent=0;
-char* customgetreqs[]={WRITE_VENT_REQ,SEE_FILES_REQ,NULL};
 
-char* custompostreqs[]={WRITE_VENT_REQ,SIGN_IN_REQ,SEE_CLIENTS_REQ,NULL};
+char* customgetreqs[]={WRITE_VENT_REQ,SEE_FILES_REQ,SIGN_IN_REQ,NULL};
+
+char* custompostreqs[]={WRITE_VENT_REQ,SIGN_IN_REQ,SEE_CLIENTS_REQ,SIGN_OUT_REQ,NULL};
 
 
 char* tmpDir=NULL;
@@ -108,31 +116,46 @@ char* generateDirListing(char* dir){
 	return tmpTwo;
 
 }
+static void printClientHTMLEntry(int id,client* c,int fd){
 
+	getpeername(c->socket , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
+        dprintf(fd,"\n<p>Cliente numero: %d , ip %s , port %d\n" ,id,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+	dprintf(fd,"Tamanho de socket: recv %d; send %d;</p>\n" ,getSocketRecvBuffSize(c->socket) , getSocketSendBuffSize(c->socket));
+	dprintf(fd,"\n<p> Username: %s</p>\n" ,c->username);
+	dprintf(fd,"\n<p> Curr session time (secs): %lf</p>\n" ,(c->running_time)/1000000);
+	if(c->isAdmin){
+		
+		dprintf(fd,"\n<p class='ADMIN'>ADMIN</p>\n");
+
+	}
+	
+
+}
 static void generateClientListing(char targetinout[PATHSIZE]){
 	char path[PATHSIZE]={0};
 	snprintf(path,PATHSIZE,"%s%s",currDir,tmpClients);
 	int fd=	open(path,O_TRUNC|O_WRONLY|O_CREAT,0777);
-	int* clients=getClientArrCopy();
+	client* clients=getClientArrCopy();
 	int maxQuota=getMaxNumOfClients();
 	int currQuota=getCurrNumOfClients();
 	
 	
-	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n<base href=''>\n</head>\n<body>\n");
+	dprintf(fd,"<!DOCTYPE html>\n<html>\n<head>\n");
+	dprintf(fd,clientHTMLEntryStyle);
+	dprintf(fd,"\n<base href=''>\n</head>\n<body>\n");
 	dprintf(fd,"<br>\n<a href='%s'>Go back</a>\n<br>\n",defaultTargetAdmin);
 	dprintf(fd,"<br>\n<form id='submitbutton' method='POST' action='/seeclients'>\n<input type='submit' name='button' value='REFRESH'>\n</form>\n<br>\n");
 	dprintf(fd,"\n<br>\n<h1>Ocupacao: %d/%d</h1>\n<br>\n<br>\n<br>" ,currQuota,maxQuota);
   	
 	for(int i=0;i<maxQuota;i++){
-	if(clients[i]){
-	getpeername(clients[i] , (struct sockaddr*)&clientAddress , (socklen_t*)&socklenpointer);
-        dprintf(fd,"\n<p>Cliente numero: %d , ip %s , port %d</p>\n<p>\n<br>\n" ,i,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
+	if(clients[i].socket){
+		printClientHTMLEntry(i,&(clients[i]),fd);
 	}
 	else{
 	dprintf(fd,"\n<p>Posicao %d desocupada</p>\n<br>\n" ,i);
 	}
 	}
-	dprintf(fd,"<br>\n<");
+	dprintf(fd,"<br>\n");
 	dprintf(fd,"</body>\n</html>\n");
 	close(fd);
 	free(clients);
@@ -200,48 +223,15 @@ static void handleVentReqFd(char* fieldmess,char targetinout[PATHSIZE]){
 	currvent++;
 	}
 
-static void handleLogin(char* fieldmess,char targetinout[PATHSIZE]){
-	char* argv2[ARGVMAX]={0};
-	int size=makeargvdelim(fieldmess,"&",argv2,ARGVMAX);
-	
-		char* username[2]={0};
-		splitString(argv2[0],"=",username);
-		char* password[2]={0};
-		char* correctPassword;
-		splitString(argv2[1],"=",password);
-		printf("Given Username: %s Password: %s\n...",username[1],password[1]);
-			if(strcmp((correctPassword=find_login_pw_in_login_arr(username[1],currLogins)),"NO_SUCH_LOGIN")){
-				printf("Found username!!!!\nThe password given is %s and the correct one is %s\n",password[1],correctPassword);
-			
-				if(!memcmp(correctPassword,password[1],strlen(password[1]))){
-					printf("Correct password!!!!\n");
-					memcpy(targetinout,defaultTarget,strlen(defaultTarget));
-					return;
-				}
-				
-			}
-		printf("Given Username: %s Password: %s\n...",username[1],password[1]);
-			if(strcmp((correctPassword=find_login_pw_in_login_arr(username[1],currAdmins)),"NO_SUCH_LOGIN")){
-				printf("Found username!!!!\nThe password given is %s and the correct one is %s\n",password[1],correctPassword);
-			
-				if(!memcmp(correctPassword,password[1],strlen(password[1]))){
-					printf("Correct password!!!!\n");
-					memcpy(targetinout,defaultTargetAdmin,strlen(defaultTargetAdmin));
-					return;
-				}
-				
-			}
-	
-	memcpy(targetinout,incorrectLoginTarget,strlen(incorrectLoginTarget));
-}
-
 int isCustomGetReq(char* nulltermedtarget){
 	int result=0;
 	char* targetcopy= strdup(nulltermedtarget);
 	char* argv2[2];
 	memset(argv2,0,2*sizeof(char*));
 	splitString(targetcopy,"?",argv2);
+	
 	result=(findInStringArr(customgetreqs,argv2[0])>=0);
+	printf("Sera que %s e um get req custom? A resposta a isso e %d\n",argv2[0],result);
 	free(targetcopy);
 	return result;
 }
@@ -254,17 +244,15 @@ int isCustomPostReq(char* nulltermedtarget){
 
 
 
-void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
+void handleCustomGetReq(client* c,char*target,char* body,char targetinout[PATHSIZE]){
 	void* result=NULL;
-	char* targetcopy= strdup(customRequest);
+	char* targetcopy= strdup(target);
 	char* argv2[2];
 	memset(argv2,0,2*sizeof(char*));
 	splitString(targetcopy,"?",argv2);
-	if(!strcmp(argv2[0],WRITE_VENT_REQ)){
-		handleVentReqFd(argv2[1],targetinout);
-	}
-	else if(!strcmp(argv2[0],SEE_CLIENTS_REQ)){
-		generateClientListing(targetinout);
+	
+	if(!strcmp(argv2[0],SIGN_IN_REQ)){
+		handleLogin(c,body,targetinout);
 
 	}
 	/*
@@ -283,18 +271,22 @@ void handleCustomGetReq(char* customRequest,char targetinout[PATHSIZE]){
 	free(targetcopy);
 	
 }
-void handleCustomPostReq(char* target,char* contents,char targetinout[PATHSIZE]){
+void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[PATHSIZE]){
 	void* result=NULL;
 	if(!strcmp(target,WRITE_VENT_REQ)){
 		handleVentReq(contents,targetinout);
 		
 	}
 	else if(!strcmp(target,SIGN_IN_REQ)){
-		handleLogin(contents,targetinout);
+		handleLogin(c,contents,targetinout);
 		
 	}
 	else if(!strcmp(target,SEE_CLIENTS_REQ)){
 		generateClientListing(targetinout);
+
+	}
+	else if(!strcmp(target,SIGN_OUT_REQ)){
+		handleLogout(c,targetinout);
 
 	}
 	/*else if(!strcmp(nulltermedtarget,writeventreq)){
