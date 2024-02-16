@@ -49,6 +49,7 @@ client* getClientArrCopy(void){
 		result[i].logged_in=clients[i].logged_in;
 		result[i].running_time=clients[i].running_time;
 		strncpy(result[i].username,clients[i].username,FIELDSIZE);
+		memcpy(&result[i].client_addr,&clients[i].client_addr,sizeof(clients[i].client_addr));
 	}
 	return result;
 
@@ -65,6 +66,7 @@ client* getFullClientArrCopy(void){
 		result[i].logged_in=clients[i].logged_in;
 		result[i].running_time=clients[i].running_time;
 		strncpy(result[i].username,clients[i].username,FIELDSIZE);
+		memcpy(&result[i].client_addr,&clients[i].client_addr,sizeof(clients[i].client_addr));
 	}
 	return result;
 
@@ -98,8 +100,7 @@ static void handleDisconnect(client* c){
                
                     c->socket = 0;
 		    c->running_time=0.0;
-		    memset(c->username,0,FIELDSIZE);
-                    currNumOfClients--;
+		    currNumOfClients--;
 }
 static void sigint_handler(int signal){
 	signal=0;
@@ -216,12 +217,9 @@ static void handleIncommingConnections(void){
                 if( !clients[i].socket )
                 {
                     clients[i].socket = client_socket;
-		    clients[i].running_time=0.0;
 		    memset(clients[i].username,0,FIELDSIZE);
 		    memcpy(&clients[i].client_addr,&clientAddress,sizeof(struct sockaddr_in));
-		    clients[i].isAdmin=0;
-	            clients[i].logged_in=0;
-	            if(logging){
+		    if(logging){
 		    fprintf(logstream,"Adding to list of sockets as %d\n" , i);
                     }
 		    break;

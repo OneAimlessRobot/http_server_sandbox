@@ -302,7 +302,7 @@ void handleCustomPostReq(client*c,char* target,char* contents,char targetinout[P
 
 void deleteDirListingHTML(void){
 char buff[PATHSIZE*2]={0};
-snprintf(buff,PATHSIZE*2,"%s/resources%s",currDir,tmpTwo);
+snprintf(buff,PATHSIZE*2,"%s%s",currDir,tmpTwo);
 remove(buff);
 
 }

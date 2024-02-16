@@ -63,6 +63,11 @@ void handleLogin(client* c,char* fieldmess,char targetinout[PATHSIZE]){
 		getpeername(c->socket , (struct sockaddr*)&c->client_addr , (socklen_t*)&socklenpointer);
 		char* username[2]={0};
 		splitString(argv2[0],"=",username);
+		if(!strlen(username[1])){
+
+			memcpy(targetinout,defaultLoginTarget,strlen(defaultLoginTarget));
+			return;
+		}
 		char* password[2]={0};
 		char* correctPassword;
 		splitString(argv2[1],"=",password);
@@ -122,8 +127,7 @@ int clientIsLoggedIn(client* c){
 	for(int i=0;i<quota;i++){
 		getpeername(result[i].socket , (struct sockaddr*)&result[i].client_addr , (socklen_t*)&socklenpointer);
         	getpeername(c->socket , (struct sockaddr*)&c->client_addr , (socklen_t*)&socklenpointer);
-        		printf("Ip a verificar: %s\nip atual: %s\n", inet_ntoa(c->client_addr.sin_addr),inet_ntoa(result[i].client_addr.sin_addr));
-			if(stringsAreEqual(inet_ntoa(result[i].client_addr.sin_addr),inet_ntoa(c->client_addr.sin_addr))){
+        		if(stringsAreEqual(inet_ntoa(result[i].client_addr.sin_addr),inet_ntoa(c->client_addr.sin_addr))){
 				if(result[i].logged_in){
 					free(result);
 					return 1;
