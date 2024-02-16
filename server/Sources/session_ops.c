@@ -145,20 +145,18 @@ int clientIsLoggedIn(client* c){
 }
 int kickClient(char ip_addr_str[FIELDSIZE]){
 	int result=0;
-	int quota= getCurrNumOfClients();
+	int quota= getMaxNumOfClients();
 	for(int i=0;i<quota;i++){
 
         	client* c= &(clients[i]);
-		if(c->socket){
-		if(stringsAreEqual(inet_ntoa(c->client_addr.sin_addr),ip_addr_str)){
+		getpeername(c->socket , (struct sockaddr*)&c->client_addr , (socklen_t*)&socklenpointer);
+        	if(stringsAreEqual(inet_ntoa(c->client_addr.sin_addr),ip_addr_str)){
 				memset(c->username,0,FIELDSIZE);
 				c->isAdmin=0;
-				close(c->socket);
 				c->socket=0;
 				c->running_time=0.0;
 				c->logged_in=0;
 				result++;
-		}
 		}
 	}
 	return result;

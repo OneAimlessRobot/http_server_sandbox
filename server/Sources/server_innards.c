@@ -209,7 +209,7 @@ static void handleIncommingConnections(void){
                 if(logging){
 		fprintf(logstream,"Client connected , ip %s , port %d \n" ,inet_ntoa(clientAddress.sin_addr) , ntohs(clientAddress.sin_port));
         	}
-		setSocketSendBuffSize(client_socket,SEND_SOCK_BUFF_SIZE);
+		//setSocketSendBuffSize(client_socket,SEND_SOCK_BUFF_SIZE);
 	    int i=0;		//add new socket to array of sockets
             for (; i < numOfClients; i++)
             {
@@ -233,14 +233,16 @@ static void handleIncommingConnections(void){
 static void handleCurrentActivity(client*c,http_request req){
 	
 	http_header header=*(req.header);
-	if(!clientIsLoggedIn(c)&&strncmp(header.target,SIGN_IN_REQ,FIELDSIZE)){
+	/*
+	if(!clientIsLoggedIn(c)&&!stringsAreEqual(header.target,SIGN_IN_REQ)){
 		char buff[PATHSIZE]={0};
 		handleLogout(c,buff);
 		sendMediaData(c,buff,defaultMimetype);
+		printf("Cliente naaaaaaaoooo esta signed in!!!!\n");
 		//sendMediaData(c,defaultLoginTarget,defaultMimetype);
 		return;
 	}
-	printf("Cliente esta signed in!!!!\n");
+	printf("Cliente esta signed in!!!!\n");*/
 	if(!strcmp(header.target,"/")){
 
 		strcpy(header.target,defaultLoginTarget);
